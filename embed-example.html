@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Пример встраивания 3D-модели</title>
+<style>body{margin:0;font:16px/1.5 system-ui;background:#f4f4f2;color:#111}main{max-width:1200px;margin:0 auto;padding:24px}
+.viewer{width:100%;aspect-ratio:16/9;border:0;border-radius:16px;background:#0b0c0e}</style></head>
+<body><main>
+<h1>Страница модели на сайте бренда</h1>
+<p>Ниже — 3D-модель, встроенная одной строкой:</p>
+<!-- ВСТАВКА: одна строка -->
+<iframe class="viewer" src="index.html?embed" allow="fullscreen; autoplay" loading="lazy" title="Интерактивная 3D-модель"></iframe>
+<p id="log">События виджета появятся здесь.</p>
+</main>
+<script>
+// Пример: передаём события 3D-модели в аналитику сайта (Яндекс Метрика: ym(ID, 'reachGoal', ...))
+addEventListener('message', e => {
+  if (!e.data || e.data.type !== 'showroom') return;
+  document.getElementById('log').textContent = 'Событие: ' + e.data.event + ' ' + JSON.stringify(e.data);
+});
+</script>
+</body></html>

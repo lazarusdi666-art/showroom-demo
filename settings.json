@@ -1,0 +1,21 @@
+{
+  "contacts": {
+    "telegram": "your_telegram",
+    "whatsapp": "79990000000"
+  },
+  "updated": null,
+  "cars": {
+    "monjaro": {
+      "cny": 179800,
+      "rateCny": 11.5,
+      "rateEur": 95,
+      "age": "new",
+      "cc": 1499,
+      "hp": 334,
+      "util": null,
+      "delivery": 170000,
+      "docs": 90000,
+      "fee": 90000
+    }
+  }
+}

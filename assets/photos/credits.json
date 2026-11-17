@@ -1,0 +1,36 @@
+{
+ "monjaro": [
+  {
+   "file": "assets/photos/monjaro/cabin_1.jpg",
+   "kind": "cabin",
+   "author": "Alexander Migl",
+   "license": "CC BY-SA 4.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File%3AGeely_Monjaro_EM-i_Auto_Zuerich_2026_IMG_9052.jpg"
+  },
+  {
+   "file": "assets/photos/monjaro/cabin_2.jpg",
+   "kind": "cabin",
+   "author": "Alexander Migl",
+   "license": "CC BY-SA 4.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File%3AGeely_Monjaro_EM-i_Auto_Zuerich_2026_IMG_9053.jpg"
+  },
+  {
+   "file": "assets/photos/monjaro/front_3.jpg",
+   "kind": "front",
+   "author": "Alexander Migl",
+   "license": "CC BY-SA 4.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File%3AGeely_Monjaro_EM-i_Auto_Zuerich_2026_IMG_9050.jpg"
+  },
+  {
+   "file": "assets/photos/monjaro/rear_4.jpg",
+   "kind": "rear",
+   "author": "Alexander Migl",
+   "license": "CC BY-SA 4.0",
+   "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "https://commons.wikimedia.org/wiki/File%3AGeely_Monjaro_EM-i_Auto_Zuerich_2026_IMG_9051.jpg"
+  }
+ ]
+}

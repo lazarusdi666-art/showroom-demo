@@ -1,0 +1,2681 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AutoShowroom 3D</title>
+<meta name="description" content="3D-шоурум китайских автомобилей с доставкой во Владивосток: осмотр в 3D, презентации салона и мотора, расчёт цены под ключ.">
+<meta name="theme-color" content="#0a0d12">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0d12'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%234c8dff' stroke-width='2.5'/%3E%3Cpath d='M10 18c2-4 10-4 12 0' fill='none' stroke='%23eef1f4' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E">
+<meta property="og:type" content="website">
+<meta property="og:title" content="AutoShowroom 3D — машины из Китая во Владивосток">
+<meta property="og:description" content="Осмотрите Zeekr 7X, Li L9, Geely Monjaro и Tank 300 в 3D и рассчитайте цену под ключ во Владивостоке.">
+<meta property="og:image" content="share.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+/* ==========================================================================
+   ДИЗАЙН-СИСТЕМА (по frontend-design / taste-skill / ui-ux-pro-max)
+   Громкое — одно: машина и её имя. Всё остальное — тихий интерфейс.
+   Цвета:  night #0a0d12 · ink #eef1f4 · steel #8b95a3 · hair 12% ink
+           акцент — у каждой модели свой (Zeekr ион, Li шампань,
+           Monjaro янтарь, Tank сигнальный); scan #00f0ff — только режим рентгена.
+   Шрифты: Tektur (дисплей, цифры — узкая ширина) + Onest (интерфейс). Оба с кириллицей.
+   Форма:  панели 18px, контролы — пилюли, хит-зона ≥44px, фокус виден всегда.
+   ========================================================================== */
+:root{
+  --night:#0a0d12; --ink:#eef1f4; --steel:#8b95a3; --dim:#5f6977;
+  --hair:rgba(238,241,244,.12); --hair-2:rgba(238,241,244,.22);
+  --panel:rgba(13,17,24,.64); --panel-solid:#10151d;
+  --scan:#00f0ff; --accent:#4c8dff; --accent-ink:#071224;
+  --display:'Tektur',system-ui,sans-serif; --ui:'Onest',system-ui,sans-serif;
+  --r-panel:18px; --edge:32px; --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--night);color:var(--ink);font:400 15px/1.5 var(--ui);overflow:hidden;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body{user-select:none;-webkit-user-select:none}
+#scene{position:fixed;inset:0;touch-action:none;display:block}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:12px}
+[hidden]{display:none!important}
+.num{font-family:var(--display);font-variant-numeric:tabular-nums;font-stretch:82%}
+.panel{background:var(--panel);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);
+  border:1px solid var(--hair);border-radius:var(--r-panel);box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+.hud > *{pointer-events:auto}
+
+/* Кнопки: шаг на hover, нажатие на click (taste-skill rule 5) */
+.btn{min-height:46px;padding:0 20px;display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:999px;
+  font:600 15px/1 var(--ui);transition:transform .18s var(--ease),background .2s,box-shadow .2s,color .2s}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0) scale(.97)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);box-shadow:0 10px 30px color-mix(in srgb,var(--accent) 35%,transparent)}
+.btn.primary:hover{box-shadow:0 14px 40px color-mix(in srgb,var(--accent) 55%,transparent)}
+.btn.quiet{background:rgba(238,241,244,.08);border:1px solid var(--hair)}
+.btn.quiet:hover{background:rgba(238,241,244,.14)}
+.btn:disabled{opacity:.45;cursor:default;transform:none}
+.btn svg{width:16px;height:16px;fill:currentColor}
+
+/* ---------- верх: знак + переключатель моделей ---------- */
+.top{position:absolute;left:var(--edge);right:var(--edge);top:22px;display:flex;align-items:center;justify-content:space-between;gap:16px;pointer-events:none}
+.top > *{pointer-events:auto}
+.mark{display:flex;align-items:center;gap:10px;font:600 15px/1 var(--ui);white-space:nowrap}
+.mark svg{width:26px;height:26px}
+.mark span{color:var(--steel);font-weight:500}
+.tabs{display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px}
+.tab{min-height:40px;padding:0 18px;border-radius:999px;font:600 14px/1 var(--ui);color:var(--steel);white-space:nowrap;transition:background .2s,color .2s}
+.tab:hover{color:var(--ink);background:rgba(238,241,244,.08)}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.arrow{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--steel);transition:color .2s,background .2s}
+.arrow:hover{color:var(--ink);background:rgba(238,241,244,.08)}
+.arrow svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+.top-gap{width:180px}
+
+/* ---------- правый рейл инструментов ---------- */
+.rail{position:absolute;right:var(--edge);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;padding:6px;border-radius:999px}
+.tool{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:var(--steel);position:relative;transition:background .2s,color .2s,transform .18s var(--ease)}
+.tool svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tool:hover{color:var(--ink);background:rgba(238,241,244,.1)}
+.tool:active{transform:scale(.94)}
+.tool:disabled{opacity:.3;cursor:not-allowed}
+.tool[aria-pressed="true"]{background:var(--ink);color:var(--night)}
+#tXray[aria-pressed="true"]{background:var(--scan);color:#001316}
+.tool .tip{position:absolute;right:58px;top:50%;transform:translate(6px,-50%);padding:7px 12px;border-radius:10px;background:var(--panel-solid);border:1px solid var(--hair);
+  font:500 13px/1 var(--ui);white-space:nowrap;color:var(--ink);opacity:0;pointer-events:none;transition:opacity .15s,transform .15s}
+.tool:hover .tip,.tool:focus-visible .tip{opacity:1;transform:translate(0,-50%)}
+.tool .tip kbd{font:600 11px var(--ui);color:var(--steel);margin-left:8px}
+
+/* ---------- имя модели и цифры (главный типографический момент) ---------- */
+.info{position:absolute;left:var(--edge);bottom:30px;max-width:min(720px,56vw);text-shadow:0 1px 12px rgba(0,0,0,.6)}
+.kind{font:500 15px/1.3 var(--ui);color:var(--steel)}
+.name{font:700 clamp(52px,7.4vw,112px)/.9 var(--display);font-stretch:82%;letter-spacing:-.005em;margin-top:8px;
+  text-wrap:balance;color:var(--ink)}
+.trim{font:500 16px/1.3 var(--ui);color:var(--ink);opacity:.82;margin-top:12px}
+.price{font:700 26px/1 var(--display);font-stretch:85%;color:var(--accent);margin-top:12px}
+body.embed .mark,body.embed .pitch-btn{display:none}
+.specs{display:grid;grid-template-columns:repeat(4,auto);justify-content:start;gap:0;margin-top:22px}
+.spec{padding:0 26px 0 18px;border-left:1px solid var(--hair-2)}
+.spec:first-child{padding-left:0;border-left:0}
+.spec dd{font:600 38px/1 var(--display);font-stretch:80%;font-variant-numeric:tabular-nums;white-space:nowrap}
+.spec dd small{font:500 14px var(--ui);color:var(--steel);margin-left:5px;letter-spacing:0}
+.spec dt{font:500 13px/1.2 var(--ui);color:var(--steel);margin-top:8px}
+.info-row{display:flex;align-items:center;gap:18px;margin-top:22px;flex-wrap:wrap}
+.sw{display:flex;gap:8px}
+.sw button{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.16);position:relative;transition:transform .18s var(--ease),border-color .2s}
+.sw button::after{content:'';position:absolute;inset:-9px;border-radius:50%}
+.sw button:hover{transform:scale(1.1)}
+.sw button[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 3px var(--night),0 0 0 5px var(--accent)}
+.paint-name{font:500 14px var(--ui);color:var(--steel);min-width:120px}
+
+/* ---------- док справа снизу: клиренс + главное действие ---------- */
+.dock{position:absolute;right:var(--edge);bottom:30px;display:flex;align-items:flex-end;gap:12px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;touch-action:pan-x;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(90deg,var(--accent) var(--p,50%),rgba(238,241,244,.16) var(--p,50%))}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:rgba(238,241,244,.16)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:4px;background:var(--accent)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-9px;border-radius:50%;background:var(--ink);border:5px solid var(--accent);box-shadow:0 2px 10px rgba(0,0,0,.4)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--ink);border:4px solid var(--accent)}
+input[type=range]:disabled{opacity:.4;cursor:default}
+.cta{min-height:64px;padding:0 28px;font-size:16px}
+
+/* ---------- панель осмотра детали ---------- */
+#card{position:absolute;right:calc(var(--edge) + 72px);top:92px;width:360px;max-height:calc(100vh - 220px);overflow:auto;padding:22px;
+  transform:translateX(24px);opacity:0;visibility:hidden;transition:transform .45s var(--ease),opacity .3s,visibility 0s .45s}
+#card.open{transform:none;opacity:1;visibility:visible;transition:transform .45s var(--ease),opacity .3s}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card-head .t{font:600 14px/1.2 var(--ui);color:var(--accent)}
+.card-head .x{width:40px;height:40px;margin:-8px -8px -8px 0;border-radius:50%;display:grid;place-items:center;color:var(--steel)}
+.card-head .x:hover{background:rgba(238,241,244,.1);color:var(--ink)}
+.card-title{font:700 28px/1.05 var(--display);font-stretch:82%;margin:10px 0 0}
+.kpis{display:flex;gap:22px;margin-top:18px}
+.kpi b{display:block;font:600 30px/1 var(--display);font-stretch:80%;font-variant-numeric:tabular-nums}
+.kpi span{font-size:13px;color:var(--steel)}
+.lines{list-style:none;margin-top:18px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--hair);padding-top:16px}
+.lines li{font-size:14.5px;line-height:1.45;color:#d6dce3;padding-left:18px;position:relative}
+.lines li::before{content:'';position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.actions{display:flex;flex-direction:column;gap:8px;margin-top:20px}
+.credit{font-size:12px;color:var(--dim);margin-top:14px;line-height:1.4}
+.credit a{color:var(--steel)}
+
+/* ---------- презентация детали (слайды) ---------- */
+#card{width:420px}
+.story{position:relative;margin:14px -22px 0;overflow:hidden;background:#07090c;aspect-ratio:16/10;touch-action:pan-y}
+.story .track{display:flex;height:100%;transition:transform .55s var(--ease)}
+.story .slide{flex:0 0 100%;height:100%;position:relative;overflow:hidden}
+.story img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.04);transition:transform 6s ease-out}
+.story .slide.on img{transform:scale(1)}
+.story .nav{position:absolute;top:50%;width:40px;height:40px;margin-top:-20px;border-radius:50%;display:grid;place-items:center;background:rgba(10,13,18,.55);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--ink);transition:background .2s,transform .18s var(--ease)}
+.story .nav:hover{background:rgba(10,13,18,.85)} .story .nav:active{transform:scale(.94)}
+.story .nav svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+.story .prev{left:10px} .story .next{right:10px}
+.story .dots{position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;gap:6px}
+.story .dots button{width:22px;height:22px;display:grid;place-items:center}
+.story .dots button::before{content:'';width:7px;height:7px;border-radius:50%;background:rgba(238,241,244,.45);transition:width .3s,background .3s}
+.story .dots button[aria-current="true"]::before{width:20px;border-radius:4px;background:var(--ink)}
+.story[data-n="1"] .nav,.story[data-n="1"] .dots{display:none}
+.infog{position:absolute;inset:0;padding:22px 24px;display:flex;flex-direction:column;justify-content:flex-end;
+  background:radial-gradient(120% 90% at 85% 10%,color-mix(in srgb,var(--accent) 38%,transparent),transparent 60%),linear-gradient(160deg,#141922,#07090c)}
+.infog .big{font:700 64px/0.9 var(--display);font-stretch:78%;font-variant-numeric:tabular-nums}
+.infog .big small{font:500 16px var(--ui);color:var(--steel);margin-left:6px}
+.infog .row{display:flex;gap:22px;margin-top:12px}
+.infog .row b{display:block;font:600 24px/1 var(--display);font-stretch:82%}
+.infog .row span{font-size:12.5px;color:var(--steel)}
+.cells{position:absolute;left:24px;right:24px;top:22px;display:grid;grid-template-columns:repeat(12,1fr);gap:4px}
+.cells i{height:34px;border-radius:4px;background:rgba(238,241,244,.08);position:relative;overflow:hidden}
+.cells i::after{content:'';position:absolute;inset:0;background:var(--accent);transform:translateY(100%);transition:transform .5s var(--ease)}
+.slide.on .cells i::after{transform:none}
+.photo-credit{font-size:11.5px;color:var(--dim);margin-top:8px;min-height:15px}
+.photo-credit a{color:var(--steel)}
+
+/* ---------- хотспоты ---------- */
+#hotspots{position:fixed;inset:0;pointer-events:none;z-index:4}
+.hs{position:absolute;left:0;top:0;pointer-events:auto;display:flex;align-items:center;gap:10px;min-height:44px;transition:opacity .3s;will-change:transform}
+.hs.hidden{opacity:0;pointer-events:none}
+.hs .dot{width:20px;height:20px;margin-left:-10px;border-radius:50%;background:var(--ink);border:5px solid var(--accent);flex:none;position:relative;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 25%,transparent)}
+.hs .dot::after{content:'';position:absolute;inset:-12px;border-radius:50%;border:1.5px solid var(--accent);animation:ping 2.4s var(--ease) infinite}
+@keyframes ping{from{transform:scale(.5);opacity:.9}to{transform:scale(1.35);opacity:0}}
+.hs .tag{padding:8px 13px;border-radius:999px;font:600 13.5px/1 var(--ui);white-space:nowrap;background:var(--panel-solid);border:1px solid var(--hair);
+  transition:background .2s,color .2s,transform .2s var(--ease)}
+.hs:hover .tag{background:var(--ink);color:var(--night);transform:translateX(2px)}
+
+/* ---------- разгон ---------- */
+#launch{position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);z-index:6;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s}
+#launch.on{opacity:1}
+#launch .spd{font:800 132px/1 var(--display);font-stretch:76%;font-variant-numeric:tabular-nums;text-shadow:0 8px 40px rgba(0,0,0,.6)}
+#launch .u{font:600 16px var(--ui);color:var(--steel);margin-top:2px}
+#launch .tm{font:600 22px var(--display);font-stretch:82%;margin-top:12px;color:var(--accent)}
+#launch .rpm{width:280px;height:4px;border-radius:4px;margin:14px auto 0;background:rgba(238,241,244,.14);overflow:hidden}
+#launch .rpm i{display:block;height:100%;width:0;background:var(--accent)}
+
+/* ---------- калькулятор ---------- */
+#calc{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(4,6,9,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  opacity:0;pointer-events:none;transition:opacity .3s;padding:16px}
+#calc.open{opacity:1;pointer-events:auto}
+.calc-box{width:min(600px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:28px;background:var(--panel-solid);position:relative}
+.calc-box h2{font:700 30px/1.05 var(--display);font-stretch:80%}
+.calc-box .sub{font-size:14px;color:var(--steel);margin-top:8px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.field label{display:block;font:500 13px/1.3 var(--ui);color:var(--steel);margin-bottom:6px}
+.field select{width:100%;height:46px;padding:0 12px;border-radius:12px;background:rgba(238,241,244,.05);border:1px solid var(--hair);color:var(--ink);font:600 15px var(--ui)}
+.field input{width:100%;height:46px;padding:0 14px;border-radius:12px;background:rgba(238,241,244,.05);border:1px solid var(--hair);color:var(--ink);
+  font:600 17px var(--display);font-stretch:85%;font-variant-numeric:tabular-nums;outline:none;user-select:text}
+.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
+.breakdown{margin-top:22px}
+.breakdown div{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--hair);font-size:14.5px;color:#d6dce3}
+.breakdown div b{font:600 15px var(--display);font-stretch:85%;font-variant-numeric:tabular-nums;white-space:nowrap}
+.total{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:18px}
+.total span{font:600 16px var(--ui)}
+.total b{font:800 40px/1 var(--display);font-stretch:78%;color:var(--accent);font-variant-numeric:tabular-nums}
+.disclaimer{font-size:12.5px;color:var(--steel);margin-top:12px;line-height:1.45}
+.calc-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+.calc-close{position:absolute;right:14px;top:14px;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--steel)}
+.calc-close:hover{background:rgba(238,241,244,.1);color:var(--ink)}
+
+/* ---------- панель дилера / питч ---------- */
+#admin,#pitch{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(4,6,9,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);opacity:0;pointer-events:none;transition:opacity .3s;padding:16px}
+#admin.open,#pitch.open{opacity:1;pointer-events:auto}
+.admin-group{margin-top:18px}
+.admin-group h3{font:600 15px var(--ui);margin-bottom:10px;color:var(--accent)}
+.pitch-btn{min-height:40px;padding:0 16px;font-size:14px}
+.top-gap{display:none}
+
+/* ---------- авторы и лицензии ---------- */
+#credits{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(4,6,9,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);opacity:0;pointer-events:none;transition:opacity .3s;padding:16px}
+#credits.open{opacity:1;pointer-events:auto}
+#credits .breakdown div{display:block;font-size:13.5px}
+#credits .breakdown b{font:600 14px var(--ui)}
+#credits a{color:var(--steel)}
+.credits-link{position:fixed;left:50%;bottom:6px;transform:translateX(-50%);z-index:6;font-size:11.5px;color:var(--dim);padding:6px 10px;min-height:28px}
+.credits-link:hover{color:var(--ink)}
+.inspect .credits-link{opacity:0;pointer-events:none}
+
+/* ---------- прочее ---------- */
+#loader{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:var(--night);transition:opacity .8s}
+#loader.done{opacity:0;pointer-events:none}
+#loader .t{font:600 15px var(--ui);color:var(--steel);text-align:center}
+#loader .b{width:200px;height:3px;border-radius:3px;background:rgba(238,241,244,.1);margin:16px auto 0;overflow:hidden}
+#loader .b i{display:block;height:100%;width:40%;background:var(--accent);animation:load 1.1s ease-in-out infinite}
+@keyframes load{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
+#toast{position:fixed;left:50%;top:84px;transform:translate(-50%,-12px);z-index:40;padding:12px 18px;font-size:14px;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;max-width:calc(100vw - 32px)}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#drop{position:fixed;inset:16px;z-index:25;border:2px dashed var(--accent);border-radius:24px;display:grid;place-items:center;font:600 18px var(--ui);color:var(--ink);background:rgba(10,13,18,.7);opacity:0;pointer-events:none;transition:opacity .2s}
+#drop.on{opacity:1}
+.vignette{position:fixed;inset:0;pointer-events:none;z-index:3;background:radial-gradient(120% 90% at 50% 42%,transparent 50%,rgba(0,0,0,.6) 100%),linear-gradient(0deg,rgba(6,8,12,.82),transparent 40%),linear-gradient(180deg,rgba(6,8,12,.7),transparent 16%),radial-gradient(60% 50% at 0% 100%,rgba(6,8,12,.7),transparent 70%)}
+.scan{position:fixed;inset:0;pointer-events:none;z-index:3;opacity:0;transition:opacity .5s;background:repeating-linear-gradient(0deg,rgba(0,240,255,.03) 0 1px,transparent 1px 4px)}
+body.xray .scan{opacity:1}
+.info{transition:opacity .4s,transform .4s var(--ease)}
+.inspect .info{opacity:0;transform:translateY(10px);pointer-events:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- планшет ---------- */
+@media (max-width:1180px){
+  .top-gap{display:none}
+  .spec dd{font-size:32px}
+}
+/* ---------- телефон ---------- */
+@media (max-width:860px){
+  :root{--edge:16px}
+  .top{top:12px;flex-direction:column;align-items:stretch;gap:10px}
+  .tabs{overflow-x:auto;scrollbar-width:none;justify-content:flex-start}
+  .pitch-btn{position:absolute;right:0;top:0;min-height:36px;padding:0 12px;font-size:13px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{min-height:44px;padding:0 16px;flex:none}
+  .arrow{display:none}
+  .rail{top:116px;left:var(--edge);right:auto;transform:none;padding:4px;flex-direction:row}
+  .tool{width:44px;height:44px}
+  .tool .tip{display:none}
+  .info{left:var(--edge);right:var(--edge);max-width:none;bottom:calc(98px + env(safe-area-inset-bottom))}
+  .kind{font-size:13px}
+  .name{font-size:44px}
+  .trim{font-size:14px;margin-top:8px}
+  .specs{grid-template-columns:repeat(4,1fr);margin-top:14px}
+  .spec{padding:0 6px 0 10px}
+  .spec dd{font-size:22px}
+  .spec dd small{display:block;margin:4px 0 0;font-size:11px}
+  .spec dt{font-size:11px;margin-top:3px}
+  .info-row{margin-top:14px;gap:12px}
+  .paint-name{display:none}
+  .dock{left:var(--edge);right:var(--edge);bottom:calc(14px + env(safe-area-inset-bottom));align-items:stretch}
+  .cta{min-height:54px;padding:0 18px;font-size:15px;flex:1}
+  #card{left:var(--edge);right:var(--edge);top:auto;bottom:calc(98px + env(safe-area-inset-bottom));width:auto;max-height:64vh;padding:18px;transform:translateY(24px)}
+  .story{margin:12px -18px 0}
+  .infog .big{font-size:48px}
+  #launch .spd{font-size:88px}
+  .fields{grid-template-columns:1fr}
+  .calc-box{padding:22px}
+  .hs .tag{font-size:12.5px;padding:7px 11px}
+  .credits-link{display:none}
+}
+/* жесты и нижняя панель на тач-экранах */
+html,body{overscroll-behavior:none}
+button,.hs{touch-action:manipulation}
+.grip{display:none}
+.gesture-hint{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;
+  padding:14px 18px;border-radius:18px;background:rgba(10,12,15,.72);backdrop-filter:blur(10px);border:1px solid var(--hair);max-width:300px;animation:hintIn .5s var(--ease) both}
+.gesture-hint b{font:600 16px var(--ui);color:var(--ink)}
+.gesture-hint span{font:500 13px/1.35 var(--ui);color:var(--steel)}
+.gesture-hint.out{opacity:0;transition:opacity .4s}
+@keyframes hintIn{from{opacity:0;transform:translate(-50%,-40%)}}
+@media (max-width:860px){
+  .info{touch-action:none;padding-top:18px}
+  .grip{display:block;position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:64px;height:24px;background:none;border:0;padding:0}
+  .grip span{display:block;width:40px;height:4px;margin:0 auto;border-radius:4px;background:rgba(238,241,244,.35)}
+  .name{font-size:36px;margin-top:4px}
+  .info.collapsed .kind,.info.collapsed .trim,.info.collapsed .specs{display:none}
+  .info.collapsed .name{font-size:32px}
+  .info-row{flex-wrap:nowrap}
+  .info-row .btn.quiet{min-height:40px;padding:0 14px;font-size:13px;white-space:nowrap}
+  .sw{gap:6px}
+  .sw button{width:28px;height:28px}
+}
+/* телефон, повёрнутый горизонтально: всё по краям, машина в центре */
+@media (max-height:500px) and (orientation:landscape){
+  .top{flex-direction:row;align-items:center}
+  .rail{top:50%;left:auto;right:var(--edge);transform:translateY(-50%);flex-direction:column;padding:3px;gap:4px}
+  .tool{width:38px;height:38px}
+  .info{left:var(--edge);right:auto;max-width:44vw;bottom:calc(10px + env(safe-area-inset-bottom));padding-top:0}
+  .grip{display:none}
+  .name,.info.collapsed .name{font-size:24px}
+  .info-row{margin-top:8px}
+  .dock{left:auto;right:calc(var(--edge) + 56px);bottom:calc(10px + env(safe-area-inset-bottom))}
+  .cta{min-height:44px;flex:none;padding:0 18px;font-size:14px}
+  #card{top:10px;bottom:10px;left:auto;right:calc(var(--edge) + 56px);width:min(360px,50vw);max-height:none;transform:translateX(24px)}
+  .gesture-hint{top:40%}
+  .inspect .dock{opacity:0;pointer-events:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition-duration:.01ms!important}
+}
+</style>
+<script src="vendor/gsap.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three/build/three.module.js",
+  "three/addons/": "./vendor/three/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="scene" aria-label="3D-модель автомобиля, вращается мышью или пальцем"></canvas>
+<div class="vignette"></div>
+<div class="scan"></div>
+<div id="hotspots"></div>
+
+<div class="hud" id="hud">
+  <header class="top">
+    <div class="mark"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="var(--accent)" stroke-width="2.5"/><path d="M8 19c3-6 13-6 16 0" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/></svg>AutoShowroom <span>Владивосток</span></div>
+    <nav class="tabs panel" id="models" aria-label="Модели">
+      <button class="arrow" id="prev" aria-label="Предыдущая модель"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div id="tabs" role="tablist" style="display:contents"></div>
+      <button class="arrow" id="next" aria-label="Следующая модель"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    </nav>
+    <button class="btn quiet pitch-btn" id="pitchBtn">Ваша машина в 3D</button>
+  </header>
+
+  <div class="rail panel" role="toolbar" aria-label="Режимы осмотра" aria-orientation="vertical">
+    <button class="tool" id="tXray" aria-pressed="false" aria-label="Рентген"><svg viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M4 12h16"/></svg><span class="tip">Рентген<kbd>X</kbd></span></button>
+    <button class="tool" id="tDoors" aria-pressed="false" aria-label="Открыть двери"><svg viewBox="0 0 24 24"><path d="M6 20V6l8-2v16M14 6h4v14M11 12h.5"/></svg><span class="tip">Двери<kbd>D</kbd></span></button>
+    <button class="tool" id="tLights" aria-pressed="true" aria-label="Фары"><svg viewBox="0 0 24 24"><path d="M11 6c-4 0-6 2.7-6 6s2 6 6 6h1V6z"/><path d="M16 9h4M16 12h4M16 15h4"/></svg><span class="tip">Фары<kbd>L</kbd></span></button>
+    <button class="tool" id="tSound" aria-pressed="true" aria-label="Звук"><svg viewBox="0 0 24 24"><path d="M4 10v4h3l5 4V6L7 10z"/><path id="snd-w" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg><span class="tip">Звук<kbd>M</kbd></span></button>
+    <button class="tool" id="tMood" aria-label="Сменить место съёмки"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg><span class="tip">Место: Ангар<kbd>N</kbd></span></button>
+    <button class="tool" id="tAdmin" aria-label="Панель дилера" hidden><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="tip">Панель дилера</span></button>
+    <button class="tool" id="tGlb" aria-label="Загрузить свою 3D-модель"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg><span class="tip">Своя модель .glb</span></button>
+    <input type="file" id="glbFile" accept=".glb,.gltf" hidden>
+  </div>
+
+  <section class="info" id="info" aria-live="polite">
+    <button class="grip" id="grip" aria-label="Показать характеристики" aria-expanded="false"><span></span></button>
+    <p class="kind" id="mKind"></p>
+    <h1 class="name" id="mName">ZEEKR 001</h1>
+    <p class="trim" id="mTrim"></p>
+    <p class="price" id="mPrice" hidden></p>
+    <dl class="specs" id="specs"></dl>
+    <div class="info-row">
+      <div class="sw" id="swatches" role="group" aria-label="Цвет кузова"></div>
+      <span class="paint-name" id="paintName"></span>
+      <button class="btn quiet" data-launch id="launchBtn"></button>
+      <button class="btn quiet" id="flipBtn" hidden>Развернуть на 180°</button>
+    </div>
+  </section>
+
+  <aside id="card" class="panel" aria-live="polite">
+    <div class="card-head" id="cardHead"><span class="t" id="cHeadT"></span><span class="sr" id="cHeadI"></span>
+      <button class="x" id="cardClose" aria-label="Назад к машине"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="card-body" id="cardBody"></div>
+  </aside>
+
+  <div class="gesture-hint" id="gHint" hidden><b>Крутите машину пальцем</b><span>Два пальца — приблизить · двойной тап — ближе · свайп по цветам — сменить цвет</span></div>
+
+  <div class="dock">
+    <button class="btn primary cta" id="ctaBtn">Рассчитать цену под ключ</button>
+  </div>
+</div>
+
+<div id="launch" aria-hidden="true"><div class="spd" id="lSpd">0</div><div class="u" id="lU">км/ч</div><div class="tm" id="lTm">0,00 с</div><div class="rpm"><i id="lRpm"></i></div></div>
+
+<div id="calc" role="dialog" aria-modal="true" aria-labelledby="calcTitle">
+  <div class="calc-box panel">
+    <button class="calc-close" id="calcClose" aria-label="Закрыть расчёт"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 id="calcTitle">Расчёт под ключ</h2>
+    <p class="sub" id="calcSub">Цена в Китае, таможня, утильсбор и доставка автовозом до Владивостока.</p>
+    <div class="breakdown" id="calcBreak"></div>
+    <div class="total"><span>Итого во Владивостоке</span><b id="calcTotal">0 ₽</b></div>
+    <p class="disclaimer">Расчёт ориентировочный: пошлина и утильсбор зависят от мощности, объёма, возраста машины и того, кто ввозит. Точную сумму подтвердит менеджер.</p>
+    <div class="calc-actions">
+      <button class="btn primary" id="sendTg">Отправить в Telegram</button>
+      <button class="btn quiet" id="sendWa">Отправить в WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<div id="admin" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+  <div class="calc-box panel">
+    <button class="calc-close" id="adminClose" aria-label="Закрыть панель"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 id="adminTitle">Панель дилера</h2>
+    <p class="sub">Цены, курс и ставки, по которым калькулятор считает машину для покупателя. Покупатель видит только итог и разбивку.</p>
+    <div id="adminBody"></div>
+    <div class="breakdown" id="adminPreview"></div>
+    <div class="total"><span>Покупатель увидит</span><b id="adminTotal">0 ₽</b></div>
+    <p class="disclaimer">«Применить» сохраняет настройки только в этом браузере — для проверки. Чтобы цифры увидели все посетители, нажмите «Скачать settings.json» и положите файл рядом с index.html на хостинге.</p>
+    <div class="calc-actions">
+      <button class="btn primary" id="adminApply">Применить</button>
+      <button class="btn quiet" id="adminSave">Скачать settings.json</button>
+    </div>
+    <button class="btn quiet" id="adminReset" style="width:100%;margin-top:10px">Сбросить к значениям из config.js</button>
+  </div>
+</div>
+
+<div id="pitch" role="dialog" aria-modal="true" aria-labelledby="pitchTitle">
+  <div class="calc-box panel">
+    <button class="calc-close" id="pitchClose" aria-label="Закрыть"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 id="pitchTitle">Ваша машина — в такой же витрине</h2>
+    <p class="sub">Покажите клиенту машину до того, как она пришла: осмотр со всех сторон, двери, салон, рентген, презентация и расчёт цены под ключ.</p>
+    <div class="breakdown">
+      <div><span>Есть 3D-модель (.glb)</span><b>загрузите — увидите сразу</b></div>
+      <div><span>Нет модели</span><b>подберём или купим под вашу машину</b></div>
+      <div><span>Фото, ТТХ, цены</span><b>ваши, в панели дилера</b></div>
+    </div>
+    <p class="disclaimer">Модель открывается прямо в вашем браузере и никуда не отправляется.</p>
+    <div class="calc-actions">
+      <button class="btn primary" id="pitchUpload">Загрузить свою модель</button>
+      <button class="btn quiet" id="pitchContact">Обсудить витрину</button>
+    </div>
+  </div>
+</div>
+
+<div id="credits" role="dialog" aria-modal="true" aria-labelledby="creditsTitle">
+  <div class="calc-box panel">
+    <button class="calc-close" id="creditsClose" aria-label="Закрыть"><svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 id="creditsTitle">Авторы и лицензии</h2>
+    <p class="sub">3D-модель, фотографии, звуки и освещение используются по свободным лицензиям. Названия и марки автомобилей принадлежат их производителям.</p>
+    <div class="breakdown" id="creditsList"></div>
+  </div>
+</div>
+<button class="credits-link" id="creditsBtn">Авторы и лицензии</button>
+
+<div id="loader"><div><div class="t">Готовим шоурум</div><div class="b"><i></i></div></div></div>
+<div id="toast" class="panel" role="status"></div>
+<div id="drop">Отпусти файл .glb, чтобы заменить машину</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { HorizontalBlurShader } from 'three/addons/shaders/HorizontalBlurShader.js';
+import { VerticalBlurShader } from 'three/addons/shaders/VerticalBlurShader.js';
+
+const gsap = window.gsap;
+
+import { APP, CONTACTS, PAINTS, MODEL_CREDITS, GLB_CFG, CARS } from './config.js';
+
+/* ==========================================================================
+   2. РЕНДЕРЕР, СЦЕНА, ПОСТ-ОБРАБОТКА
+   ========================================================================== */
+const canvas = document.getElementById('scene');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias:false, powerPreference:'high-performance' });
+} catch (e) {
+  document.getElementById('loader').innerHTML = '<div class="t">WebGL недоступен в этом браузере</div>';
+  throw e;
+}
+const isMobile = matchMedia('(max-width: 860px)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
+renderer.setPixelRatio(Math.min(devicePixelRatio, isMobile ? 1.5 : 1.75));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.AgXToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#05070c');
+scene.fog = new THREE.FogExp2('#05070c', 0.042);
+
+const camera = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, 0.05, 90);
+camera.position.set(3.6, 1.4, 4.3);
+
+// На телефоне низ экрана занят текстом: сдвигаем кадр вверх, чтобы машина стояла между вкладками и цифрами
+function frameCamera() {
+  const portrait = innerWidth <= 860 && innerHeight > innerWidth;
+  camera.fov = innerWidth < innerHeight ? 62 : 36;            // в вертикальном экране шире угол, иначе камера уезжает за стену
+  if (portrait) camera.setViewOffset(innerWidth, innerHeight, 0, innerHeight * 0.16, innerWidth, innerHeight);
+  else camera.clearViewOffset();
+}
+frameCamera();
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.enablePan = false;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.5;          // update(dt) → 0.5 оборота в минуту
+controls.rotateSpeed = isMobile ? 0.9 : 0.6;
+controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };   // один палец — крутить, щипок — приблизить
+controls.zoomSpeed = 0.8;
+controls.minPolarAngle = 0.22;
+controls.maxPolarAngle = Math.PI / 2 - 0.02; // камера никогда не проваливается под асфальт
+controls.target.set(0, 0.6, 0);
+
+// Композер: HDR-цель (HalfFloat) + MSAA, блум неона, финальный tone mapping в OutputPass
+const rt = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: isMobile ? 2 : 4 });
+const composer = new EffectComposer(renderer, rt);
+composer.setPixelRatio(renderer.getPixelRatio());
+composer.setSize(innerWidth, innerHeight);
+composer.addPass(new RenderPass(scene, camera));
+/* GTAO — затенение в нишах (арки, стыки панелей, под днищем). Зеркало пола на время прохода
+   прячем: иначе Reflector перерисует отражение ещё раз внутри AO-прохода. Только десктоп. */
+const gtao = isMobile ? null : new GTAOPass(scene, camera, innerWidth, innerHeight);
+if (gtao) {
+  gtao.updateGtaoMaterial({ radius: 0.45, distanceExponent: 1.5, thickness: 1.2, scale: 1.1, samples: 16, distanceFallOff: 1 });
+  gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+  gtao.blendIntensity = 0.9;
+  const render0 = gtao.render.bind(gtao);
+  gtao.render = (...a) => { const hidden = []; [mirror, asphalt, podDisk, shadowCatcher].forEach(o => { if (o && o.visible) { o.visible = false; hidden.push(o); } }); render0(...a); hidden.forEach(o => o.visible = true); };
+  composer.addPass(gtao);
+}
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.32, 0.4, 1.05);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+/* ==========================================================================
+   3. ОКРУЖЕНИЕ: HDR-карта отражений из неоновых полос (то, что отражает лак)
+   ========================================================================== */
+function buildEnvMap() {
+  const env = new THREE.Scene();
+  env.background = new THREE.Color(0x000000);
+  const strip = (w, h, rgb, k, pos, look) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(rgb[0]*k, rgb[1]*k, rgb[2]*k), side: THREE.DoubleSide }));
+    m.position.set(...pos); m.lookAt(...look); env.add(m);
+  };
+  // длинные потолочные софтбоксы — дают «острые блики на гранях крыльев»
+  strip(0.35, 9, [1,1,1], 5.5, [-1.6, 5, 0], [-1.6, 0, 0]);
+  strip(0.35, 9, [1,1,1], 5.5, [ 1.6, 5, 0], [ 1.6, 0, 0]);
+  strip(0.25, 9, [0.6,0.95,1], 3.5, [0, 5.2, 0], [0, 0, 0]);
+  // боковой бирюзовый и холодный белый
+  strip(7, 1.2, [0, 0.95, 1], 4.0, [-7, 2.6, 0], [0, 1.2, 0]);
+  strip(7, 1.2, [0.9, 0.95, 1], 3.2, [ 7, 2.6, 0], [0, 1.2, 0]);
+  // тёплый контровой сзади
+  strip(5, 1.6, [1, 0.0, 0.33], 3.0, [0, 1.8, -8], [0, 1, 0]);
+  strip(5, 1.0, [1, 0.6, 0.1], 1.6, [0, 1.2, 8], [0, 1, 0]);
+  // «горизонт» — классическая линия отражения по бортам
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 0.5, 48, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.22,0.26,0.3), side: THREE.BackSide }));
+  ring.position.y = 0.7; env.add(ring);
+  const pm = new THREE.PMREMGenerator(renderer);
+  const tex = pm.fromScene(env, 0.035).texture;
+  pm.dispose();
+  return tex;
+}
+const envNeon = buildEnvMap();
+scene.environment = envNeon;
+
+
+/* ==========================================================================
+   4. ГАРАЖ NFS: мокрый зеркальный пол, неоновые рамы, софтбоксы, контровой свет
+   ========================================================================== */
+RectAreaLightUniformsLib.init();
+const garage = new THREE.Group(); scene.add(garage);
+
+function canvasTex(size, draw, srgb = false) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  draw(c.getContext('2d'), size);
+  const t = new THREE.CanvasTexture(c);
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const neon = (hex, k = 3) => { const c = new THREE.Color(hex).multiplyScalar(k); return new THREE.MeshBasicMaterial({ color: c, toneMapped: true, fog: true }); };
+
+// 4.1 Пол: настоящее зеркало (Reflector) + поверх полупрозрачный «мокрый асфальт» с лужами
+const mirror = new Reflector(new THREE.CircleGeometry(30, 64), {
+  clipBias: 0.003,
+  textureWidth: Math.round(innerWidth * (isMobile ? 0.5 : 0.75)),
+  textureHeight: Math.round(innerHeight * (isMobile ? 0.5 : 0.75)),
+  color: 0x8a909a,
+});
+mirror.rotation.x = -Math.PI / 2;
+garage.add(mirror);
+
+const wetAlpha = canvasTex(512, (g, s) => {
+  g.fillStyle = 'rgb(150,150,150)'; g.fillRect(0, 0, s, s);          // база: ~40% отражения
+  for (let i = 0; i < 70; i++) {                                     // лужи — почти чистое зеркало
+    const x = Math.random() * s, y = Math.random() * s, r = 10 + Math.random() * 60;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, 'rgba(30,30,30,0.9)'); gr.addColorStop(1, 'rgba(30,30,30,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  const id = g.getImageData(0, 0, s, s);                             // асфальтная крошка
+  for (let i = 0; i < id.data.length; i += 4) { const n = (Math.random() - 0.5) * 50; id.data[i] += n; id.data[i+1] += n; id.data[i+2] += n; }
+  g.putImageData(id, 0, 0);
+});
+wetAlpha.wrapS = wetAlpha.wrapT = THREE.RepeatWrapping; wetAlpha.repeat.set(7, 7);
+const asphalt = new THREE.Mesh(new THREE.CircleGeometry(30, 64), new THREE.MeshStandardMaterial({
+  color: '#0b0e14', roughness: 0.55, metalness: 0.2, transparent: true, alphaMap: wetAlpha, depthWrite: false,
+}));
+asphalt.rotation.x = -Math.PI / 2; asphalt.position.y = 0.002; asphalt.renderOrder = 1; garage.add(asphalt);
+
+// Студийный «пятак»: светлое пятно под машиной, к краям пол уходит в темноту (как в фотостудии)
+const fadeTex = canvasTex(512, (g, sz) => {
+  const gr = g.createRadialGradient(sz / 2, sz / 2, sz * 0.12, sz / 2, sz / 2, sz / 2);
+  gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.55)'); gr.addColorStop(0.7, 'rgba(255,255,255,0.97)'); gr.addColorStop(1, 'rgba(255,255,255,1)');
+  g.fillStyle = gr; g.fillRect(0, 0, sz, sz);
+});
+const floorFade = new THREE.Mesh(new THREE.CircleGeometry(30, 64), new THREE.MeshBasicMaterial({ color: '#0e1013', transparent: true, alphaMap: fadeTex, depthWrite: false, fog: false }));
+floorFade.rotation.x = -Math.PI / 2; floorFade.position.y = 0.0045; floorFade.renderOrder = 2; garage.add(floorFade);
+
+// Подиум: неоновые кольца
+const ringMat = neon('#00f3ff', 1.4);
+const podRing = new THREE.Mesh(new THREE.RingGeometry(3.85, 3.9, 128), ringMat);
+podRing.rotation.x = -Math.PI / 2; podRing.position.y = 0.006; garage.add(podRing);
+const podRing2 = new THREE.Mesh(new THREE.RingGeometry(4.25, 4.27, 128), neon('#00f3ff', 0.6));
+podRing2.rotation.x = -Math.PI / 2; podRing2.position.y = 0.006; garage.add(podRing2);
+const podDisk = new THREE.Mesh(new THREE.CircleGeometry(3.85, 96), new THREE.MeshStandardMaterial({ color:'#070a0f', roughness:.35, metalness:.6, transparent:true, opacity:.35, depthWrite:false }));
+podDisk.rotation.x = -Math.PI / 2; podDisk.position.y = 0.004; podDisk.renderOrder = 2; garage.add(podDisk);
+
+// Контактная тень (мягкое пятно под машиной)
+const shadowTex = canvasTex(256, (g, s) => {
+  const gr = g.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+  gr.addColorStop(0, 'rgba(0,0,0,0.92)'); gr.addColorStop(0.55, 'rgba(0,0,0,0.6)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, s, s);
+});
+
+// Комната: тёмный бетон
+const room = new THREE.Mesh(new THREE.BoxGeometry(34, 11, 34), new THREE.MeshStandardMaterial({ color:'#0a0d13', roughness:.95, metalness:0, side:THREE.BackSide }));
+room.position.y = 5.45; garage.add(room);
+
+// Потолочная неоновая рама (как на концепте)
+const frame = new THREE.Group(); garage.add(frame);
+const fm = neon('#dceeff', 1.6);
+[[0, 4.6, -3.4, 7.6, 0.05, 0.05], [0, 4.6, 3.4, 7.6, 0.05, 0.05], [-3.8, 4.6, 0, 0.05, 0.05, 6.8], [3.8, 4.6, 0, 0.05, 0.05, 6.8]]
+  .forEach(([x, y, z, w, h, d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), fm); m.position.set(x, y, z); frame.add(m); });
+const fm2 = neon('#dceeff', 0.7);
+[[0, 5.2, -5.2, 11, 0.04, 0.04], [0, 5.2, 5.2, 11, 0.04, 0.04], [-5.5, 5.2, 0, 0.04, 0.04, 10.4], [5.5, 5.2, 0, 0.04, 0.04, 10.4]]
+  .forEach(([x, y, z, w, h, d]) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), fm2); m.position.set(x, y, z); frame.add(m); });
+
+// Задняя стена: диагональные неоновые «треугольники» и вертикали
+const wall = new THREE.Group(); garage.add(wall);
+const diag = (x, y, len, ang, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(len, 0.045, 0.045), mat); m.position.set(x, y, -11.5); m.rotation.z = ang; wall.add(m); };
+const wm = neon('#bff8ff', 0.5), wmc = neon('#7fdcff', 0.55), wmp = neon('#ff0055', 0.9);
+diag(-3.2, 2.2, 4.2, 1.0, wm); diag(-1.2, 2.2, 4.2, -1.0, wm); diag(2.6, 2.6, 3.4, 0.95, wmc); diag(4.2, 2.6, 3.4, -0.95, wmc);
+[-7, -6.4, 6.4, 7].forEach((x, i) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.04, 6, 0.04), i % 3 ? wmc : wmp); m.position.set(x, 3, -11.5); wall.add(m); });
+// Световые «трассеры» на левой стене (motion streaks)
+const streakTex = canvasTex(256, (g, s) => {
+  const gr = g.createLinearGradient(0, 0, s, 0);
+  gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, s * 0.45, s, s * 0.1);
+});
+const streaks = new THREE.Group(); garage.add(streaks);
+for (let i = 0; i < 16; i++) {
+  const col = new THREE.Color(i % 5 === 0 ? '#ff6a00' : '#00e1ff').multiplyScalar(1.8);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(6 + Math.random() * 6, 0.5), new THREE.MeshBasicMaterial({ map: streakTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  m.position.set(-11.8, 0.6 + Math.random() * 3.4, -6 + Math.random() * 10); m.rotation.y = Math.PI / 2; m.rotation.z = (Math.random() - 0.5) * 0.25;
+  streaks.add(m);
+}
+
+// Свет: два длинных софтбокса (RectAreaLight), контровой, минимум ambient
+const softL = new THREE.RectAreaLight('#00f3ff', 9, 6.5, 0.7); softL.position.set(-2.6, 3.6, 0); softL.lookAt(0, 0.4, 0); scene.add(softL);
+const softR = new THREE.RectAreaLight('#ffffff', 7, 6.5, 0.7); softR.position.set(2.6, 3.6, 0); softR.lookAt(0, 0.4, 0); scene.add(softR);
+const rim = new THREE.RectAreaLight('#ff0055', 3, 4, 1.2); rim.position.set(0, 1.1, -5.6); rim.lookAt(0, 0.7, 0); scene.add(rim);
+const rim2 = new THREE.RectAreaLight('#ffaa00', 3, 3, 1); rim2.position.set(-3.5, 1.2, -4.5); rim2.lookAt(0, 0.7, 0); scene.add(rim2);
+const ambient = new THREE.AmbientLight('#8fb6ff', 0.12); scene.add(ambient);
+// Ключевой свет сверху с мягкой тенью — машина «стоит» на полу, а не висит
+const sun = new THREE.DirectionalLight('#ffffff', 1.4);
+sun.position.set(1.8, 9, 2.6); sun.castShadow = true;
+sun.shadow.mapSize.set(isMobile ? 1024 : 2048, isMobile ? 1024 : 2048);
+Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, near: 1, far: 20 });
+sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.02;
+scene.add(sun);
+const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), new THREE.ShadowMaterial({ opacity: 0.55, depthWrite: false }));
+shadowCatcher.rotation.x = -Math.PI / 2; shadowCatcher.position.y = 0.009; shadowCatcher.receiveShadow = true; shadowCatcher.renderOrder = 4; scene.add(shadowCatcher);
+
+/* Контактная тень по силуэту (метод официального примера three.js webgl_shadow_contact):
+   ортокамера смотрит из-под пола вверх, рисует машину материалом «глубина → темнота»
+   (alpha = (1 − z)·darkness — чем ближе к полу деталь, тем темнее), затем два прохода
+   размытия по горизонтали и вертикали. Получается мягкая тень, повторяющая колёса и днище. */
+const CS = (() => {
+  const W = 7, H = 7, CAM_H = 1.2, RES = isMobile ? 256 : 512;
+  const rt = new THREE.WebGLRenderTarget(RES, RES), rtB = new THREE.WebGLRenderTarget(RES, RES);
+  rt.texture.generateMipmaps = rtB.texture.generateMipmaps = false;
+  const group = new THREE.Group(); group.position.y = 0.006; scene.add(group);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(W, H).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ map: rt.texture, opacity: 0.9, transparent: true, depthWrite: false }));
+  plane.scale.y = -1; plane.renderOrder = 4; group.add(plane);
+  const blurPlane = new THREE.Mesh(plane.geometry); blurPlane.visible = false; group.add(blurPlane);
+  const cam = new THREE.OrthographicCamera(-W / 2, W / 2, H / 2, -H / 2, 0, CAM_H); cam.rotation.x = Math.PI / 2; group.add(cam);
+  const depth = new THREE.MeshDepthMaterial(); depth.userData.darkness = { value: 1.4 };
+  depth.onBeforeCompile = sh => { sh.uniforms.darkness = depth.userData.darkness; sh.fragmentShader = '#define DARKNESS\nuniform float darkness;\n' + sh.fragmentShader.replace('gl_FragColor = vec4( vec3( 1.0 - fragCoordZ ), opacity );', 'gl_FragColor = vec4( vec3( 0.0 ), ( 1.0 - fragCoordZ ) * darkness );'); };
+  depth.depthTest = depth.depthWrite = false;
+  const hb = new THREE.ShaderMaterial(HorizontalBlurShader), vb = new THREE.ShaderMaterial(VerticalBlurShader); hb.depthTest = vb.depthTest = false;
+  const csScene = new THREE.Scene(); csScene.overrideMaterial = depth;   // overrideMaterial работает только у Scene
+  const blur = amount => {
+    blurPlane.visible = true;
+    blurPlane.material = hb; hb.uniforms.tDiffuse.value = rt.texture; hb.uniforms.h.value = amount / 256;
+    renderer.setRenderTarget(rtB); renderer.render(blurPlane, cam);
+    blurPlane.material = vb; vb.uniforms.tDiffuse.value = rtB.texture; vb.uniforms.v.value = amount / 256;
+    renderer.setRenderTarget(rt); renderer.render(blurPlane, cam);
+    blurPlane.visible = false;
+  };
+  return {
+    plane,
+    update(root) {
+      if (!root) return;
+      const cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha(), parent = root.parent;
+      renderer.setClearColor(0x000000, 0);
+      const vis = []; root.traverse(o => { if (o.isMesh && o.material && o.material.transparent && o.visible) { o.visible = false; vis.push(o); } });   // стекло и пятна не дают тень
+      csScene.add(root);
+      renderer.setRenderTarget(rt); renderer.clear(); renderer.render(csScene, cam);
+      parent.add(root);
+      vis.forEach(o => o.visible = true);
+      blur(1.4); blur(0.5);
+      renderer.setRenderTarget(null); renderer.setClearColor(cc, ca);
+    },
+  };
+})();
+
+/* Места съёмки — готовые 3D-помещения (Sketchfab, CC BY), машина стоит внутри.
+   Освещение и отражения — HDR-панорама похожего реального помещения (Poly Haven, CC0) → PMREM → scene.environment;
+   тени — от верхнего света на пол помещения + контактная тень по силуэту + GTAO в углах.
+   Камера не выходит за стены: её позиция зажимается в габарит комнаты (roomBox) каждый кадр. */
+const ENVS = [
+  { id: 'hangar',  name: 'Ангар',   model: 'hangar',  scale: 0.01, floor: 0.12, hdr: 'small_hangar_01', exp: 1.0,  envI: 1.0, rot: 0,   shadow: .55, credit: { title: 'Garage / Warehouse', author: 'Dogus.Berk.Bayram', url: 'https://sketchfab.com/3d-models/316c4f801e274662a61e74e1cb25ea52' } },
+  { id: 'parking', name: 'Паркинг', model: 'parking', scale: 1,    floor: 0,    hdr: 'parking_garage',  exp: 1.05, envI: 0.9, rot: 1.9, shadow: .6,  credit: { title: 'Parking garage', author: 'idmental.id', url: 'https://sketchfab.com/3d-models/5310b7d77b70427d936ec4253fff679c' } },
+  { id: 'studio',  name: 'Студия',  model: 'studio',  scale: 1,    floor: 0, bounds: /^wall/,    hdr: 'studio_small_09', exp: 0.95, envI: 0.8, rot: 0,   shadow: .65, credit: { title: 'Studio V1 For Car', author: 'velocity.motion', url: 'https://sketchfab.com/3d-models/9c45d19a7d434e2ca1640d6d2146e895' } },
+];
+const envCache = new Map();
+let envRoom = null, roomBox = null;
+function loadEnv(e) {
+  if (!envCache.has(e.id)) envCache.set(e.id, Promise.all([
+    new RGBELoader().loadAsync(`assets/env/${e.hdr}.hdr`),
+    gltfLoader.loadAsync(`models/env/${e.model}.glb`),
+  ]).then(([hdr, gltf]) => {
+    const pm = new THREE.PMREMGenerator(renderer);
+    const env = pm.fromEquirectangular(hdr).texture; hdr.dispose(); pm.dispose();
+    const r = gltf.scene; r.scale.setScalar(e.scale); r.updateMatrixWorld(true);
+    // габарит, внутри которого ставим машину и держим камеру: стены (если заданы) или всё помещение
+    let bb = new THREE.Box3().setFromObject(r);
+    if (e.bounds) { const wb = new THREE.Box3(); r.traverse(o => { if (o.isMesh && e.bounds.test(o.name)) wb.expandByObject(o); }); if (!wb.isEmpty()) bb = new THREE.Box3(new THREE.Vector3(wb.min.x, bb.min.y, wb.min.z), new THREE.Vector3(wb.max.x, bb.max.y, wb.max.z)); }
+    const c = bb.getCenter(new THREE.Vector3());
+    // машина — в центре помещения, пол помещения — на y = 0
+    r.position.set(-c.x, -e.floor * (e.scale === 1 ? 1 : 1) - (e.scale === 1 ? bb.min.y : 0), -c.z);
+    if (e.scale !== 1) r.position.y = -e.floor;
+    r.updateMatrixWorld(true);
+    r.traverse(o => { if (o.isMesh) { o.receiveShadow = false; o.castShadow = false; if (o.material && 'envMapIntensity' in o.material) o.material.envMapIntensity = .8; } });
+    const box = bb.clone().translate(r.position);
+    return { env, room: r, box };
+  }));
+  return envCache.get(e.id);
+}
+async function applyEnv(i) {
+  const e = ENVS[i]; state.envIdx = i; emit('environment', { id: e.id });
+  try {
+    const { env, room: r, box } = await loadEnv(e);
+    if (state.envIdx !== i) return;                       // пока грузилось — выбрали другое место
+    if (envRoom) scene.remove(envRoom);
+    envRoom = r; scene.add(envRoom); roomBox = box;
+    scene.environment = env; scene.environmentIntensity = e.envI; scene.environmentRotation.y = e.rot;
+    scene.background = new THREE.Color('#0b0c0e'); scene.fog = null;
+    renderer.toneMapping = THREE.NeutralToneMapping; renderer.toneMappingExposure = e.exp; bloom.strength = 0.12;
+    garage.visible = false;                                 // нарисованный гараж больше не нужен
+    Sound.ambience(e.id);
+    softL.intensity = softR.intensity = rim.intensity = rim2.intensity = 0; ambient.intensity = 0;
+    sun.intensity = 0.6; shadowCatcher.material.opacity = e.shadow;
+    if (gtao) gtao.enabled = perf.level === 0;
+    const s = roomBox.getSize(new THREE.Vector3());
+    controls.maxDistance = Math.max(4, Math.min(controls.maxDistance, roomLimit()));
+    if (rig && state.mode === 'orbit') {                    // помещение загрузилось — ставим камеру так, чтобы она была внутри
+      const o = overviewPose(); applyOrbitLimits(o);
+      if (camera.position.distanceTo(o.target) > o.dist + 0.3) gsap.to(camera.position, { x: o.pos.x, y: o.pos.y, z: o.pos.z, duration: .8, ease: 'power2.out' });
+    }
+    const b = document.getElementById('tMood'); if (b) b.querySelector('.tip').firstChild.textContent = `Место: ${e.name}`;
+  } catch (err) {
+    console.info('Помещение не загрузилось (нужен http-сервер) — остаётся процедурная студия', err);
+  }
+}
+// камера не выходит за стены, пол и потолок помещения
+function clampCameraToRoom() {
+  if (!roomBox) return;
+  const m = 0.45, p = camera.position, b = roomBox;
+  const x = THREE.MathUtils.clamp(p.x, b.min.x + m, b.max.x - m), y = THREE.MathUtils.clamp(p.y, 0.25, b.max.y - 0.35), z = THREE.MathUtils.clamp(p.z, b.min.z + m, b.max.z - m);
+  if (x !== p.x || y !== p.y || z !== p.z) { p.set(x, y, z); camera.lookAt(controls.target); }
+}
+// видимые панели софтбоксов (дают блики и блум)
+[].forEach(([l, c, k]) => {
+  const p = new THREE.Mesh(new THREE.PlaneGeometry(l.width, l.height), new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), side: THREE.DoubleSide }));
+  p.position.copy(l.position); p.quaternion.copy(l.quaternion); garage.add(p);
+});
+
+/* ==========================================================================
+   5. МАТЕМАТИКА ПРОФИЛЕЙ
+   ========================================================================== */
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ss = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+
+// Монотонный кубический сплайн Фритча–Карлсона: гладкий профиль без «перелётов» между точками
+function monotone(pts) {
+  pts = pts.slice().sort((a, b) => a[0] - b[0]);
+  const n = pts.length, xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const d = [], m = new Array(n);
+  for (let i = 0; i < n - 1; i++) d[i] = (ys[i+1] - ys[i]) / (xs[i+1] - xs[i]);
+  m[0] = d[0]; m[n-1] = d[n-2];
+  for (let i = 1; i < n - 1; i++) m[i] = d[i-1] * d[i] <= 0 ? 0 : (d[i-1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) { m[i] = m[i+1] = 0; continue; }
+    const a = m[i] / d[i], b = m[i+1] / d[i], s = a * a + b * b;
+    if (s > 9) { const t = 3 / Math.sqrt(s); m[i] = t * a * d[i]; m[i+1] = t * b * d[i]; }
+  }
+  const f = x => {
+    if (x <= xs[0]) return ys[0];
+    if (x >= xs[n-1]) return ys[n-1];
+    let i = 0; while (x > xs[i+1]) i++;
+    const h = xs[i+1] - xs[i], t = (x - xs[i]) / h, t2 = t * t, t3 = t2 * t;
+    return (2*t3 - 3*t2 + 1) * ys[i] + (t3 - 2*t2 + t) * h * m[i] + (-2*t3 + 3*t2) * ys[i+1] + (t3 - t2) * h * m[i+1];
+  };
+  f.x0 = xs[0]; f.x1 = xs[n-1]; f.max = Math.max(...ys);
+  return f;
+}
+
+/* Сечение кузова — скруглённый прямоугольник (8 сегментов).
+   Шаблон задаёт для каждой вершины кольца сегмент и параметр s∈[0,1),
+   поэтому индекс j у всех колец одинаковый — можно вырезать двери/капот по индексам. */
+function ringTemplate(counts) {
+  const tp = [];
+  for (const [seg, n] of counts) for (let k = 0; k < n; k++) tp.push({ seg, s: k / n });
+  return tp;
+}
+const BODY_TP = ringTemplate([['R',16],['TR',12],['T',72],['TL',12],['L',16],['BL',10],['B',28],['BR',10]]);
+const GLASS_TP = ringTemplate([['R',10],['TR',12],['T',40],['TL',12],['L',10],['BL',3],['B',14],['BR',3]]);
+function rrPoint(tp, w, b, t, rT, rB) {
+  const H = Math.PI / 2, s = tp.s;
+  switch (tp.seg) {
+    case 'R':  return [w, lerp(b + rB, t - rT, s)];
+    case 'TR': return [w - rT + rT * Math.cos(s * H), t - rT + rT * Math.sin(s * H)];
+    case 'T':  return [lerp(w - rT, -(w - rT), s), t];
+    case 'TL': return [-(w - rT) + rT * Math.cos(H + s * H), t - rT + rT * Math.sin(H + s * H)];
+    case 'L':  return [-w, lerp(t - rT, b + rB, s)];
+    case 'BL': return [-(w - rB) + rB * Math.cos(2 * H + s * H), b + rB + rB * Math.sin(2 * H + s * H)];
+    case 'B':  return [lerp(-(w - rB), w - rB, s), b];
+    case 'BR': return [(w - rB) + rB * Math.cos(3 * H + s * H), b + rB + rB * Math.sin(3 * H + s * H)];
+  }
+}
+
+/* Лофт: протягиваем кольца вдоль z. Порядок (a,b,c)(b,d,c) даёт нормали наружу. */
+function loftIndices(N, M, skip) {
+  const idx = [];
+  for (let i = 0; i < N - 1; i++) for (let j = 0; j < M; j++) {
+    if (skip && skip(i, j)) continue;
+    const a = i * M + j, b = i * M + (j + 1) % M, c = (i + 1) * M + j, d = (i + 1) * M + (j + 1) % M;
+    idx.push(a, b, c, b, d, c);
+  }
+  return idx;
+}
+
+/* ==========================================================================
+   6. ПРОЦЕДУРНЫЙ АВТОМОБИЛЬ
+   ========================================================================== */
+const sharedMats = {
+  trim:   new THREE.MeshStandardMaterial({ color:'#0b0c0f', roughness:.45, metalness:.3 }),
+  rubber: new THREE.MeshStandardMaterial({ color:'#121315', roughness:.88, metalness:0, side:THREE.DoubleSide }),
+  liner:  new THREE.MeshStandardMaterial({ color:'#060708', roughness:1, metalness:0, side:THREE.BackSide }),
+  chrome: new THREE.MeshStandardMaterial({ color:'#d7dde3', roughness:.12, metalness:1 }),
+  metal:  new THREE.MeshStandardMaterial({ color:'#5b6168', roughness:.35, metalness:.9 }),
+  dark:   new THREE.MeshStandardMaterial({ color:'#15171b', roughness:.6, metalness:.4 }),
+  orange: new THREE.MeshStandardMaterial({ color:'#ff6a1a', roughness:.5, metalness:.1, emissive:'#ff4a00', emissiveIntensity:.35 }),
+};
+
+function makeTube(points, radius, mat, closed = false, seg = 64) {
+  const curve = new THREE.CatmullRomCurve3(points, closed, 'centripetal');
+  return new THREE.Mesh(new THREE.TubeGeometry(curve, seg, radius, 8, closed), mat);
+}
+
+function buildProceduralCar(spec) {
+  const g = spec.geo;
+  const L = g.L, hw = g.W / 2, zf = L / 2, zr = -L / 2;
+  const top = monotone(g.top), bot = monotone(g.bottom), roof = monotone(g.roof);
+  const fAx = zf - g.fo, rAx = fAx - g.wb, Ra = g.R + g.archPad;
+
+  // Ширина в плане: суперэллипс на носу и корме (|t|^p + |w|^p = 1) + лёгкое сужение носа
+  const planW = z => {
+    let f = 1;
+    if (z > zf - g.rf) { const t = clamp((z - (zf - g.rf)) / g.rf, 0, 1); f = Math.pow(1 - Math.pow(t, g.pf), 1 / g.pf); }
+    else if (z < zr + g.rr) { const t = clamp(((zr + g.rr) - z) / g.rr, 0, 1); f = Math.pow(1 - Math.pow(t, g.pr), 1 / g.pr); }
+    return hw * f * (1 - g.nt * ss(fAx - 0.6, zf, z));
+  };
+  // Выемки в верхней грани: моторный отсек (bay) и «ванна» салона (tub)
+  const bayW = z => ss(g.cowl + 0.03, g.cowl + 0.12, z) * (1 - ss(zf - 0.36, zf - 0.26, z));
+  const tubW = z => ss(zr + 0.32, zr + 0.44, z) * (1 - ss(g.cowl - 0.12, g.cowl - 0.03, z));
+  const rads = (z) => { const w = planW(z), h = top(z) - bot(z); return [Math.min(g.rT, h * 0.45, w * 0.95), Math.min(g.rB, h * 0.45, w * 0.95)]; };
+
+  // Точка поверхности кузова. notch=false — «целая» поверхность (для капота).
+  function bodyPoint(z, tp, notch = true) {
+    const w = Math.max(planW(z), 1e-5), b = bot(z), t = top(z);
+    const [rT, rB] = rads(z);
+    let [x, y] = rrPoint(tp, w, b, t, rT, rB);
+    if (tp.seg === 'T') {
+      const xi = Math.max(w - rT, 1e-5);
+      y += g.crown * (1 - (x / xi) ** 2);                    // выпуклость крыши/капота
+      if (notch) {
+        const au = Math.abs(x) / w;
+        const kb = bayW(z) * (1 - ss(g.ufBay - 0.1, g.ufBay, au));
+        if (kb > 0) y = lerp(y, Math.min(g.bay, t - 0.06), kb);
+        const kt = tubW(z) * (1 - ss(g.ufTub - 0.1, g.ufTub, au));
+        if (kt > 0) y = lerp(y, g.floor, kt);
+      }
+    }
+    if (tp.seg === 'R' || tp.seg === 'L') {                   // боковая «бочка»
+      const k = (y - (b + rB)) / Math.max((t - rT) - (b + rB), 1e-5);
+      x *= 1 + g.bulge * (1 - (2 * k - 1) ** 2);
+    }
+    // Колёсные арки: всё, что ниже окружности арки у боковин, поднимаем на окружность
+    const au = Math.abs(x) / w;
+    if (tp.seg === 'R' || tp.seg === 'L' || tp.seg === 'BR' || tp.seg === 'BL' || (tp.seg === 'B' && au > 0.6)) {
+      for (const zc of [fAx, rAx]) {
+        const dz = z - zc;
+        if (Math.abs(dz) < Ra) { const ay = g.R + Math.sqrt(Ra * Ra - dz * dz); if (y < ay) y = ay; }
+      }
+    }
+    return [x, y, z];
+  }
+  // x на внешней боковой поверхности на высоте y (для фар/молдингов)
+  function surfX(z, y) {
+    const w = planW(z), b = bot(z), t = top(z), [rT, rB] = rads(z);
+    if (y > t - rT) return (w - rT) + Math.sqrt(Math.max(0, rT * rT - (y - (t - rT)) ** 2));
+    if (y < b + rB) return (w - rB) + Math.sqrt(Math.max(0, rB * rB - (b + rB - y) ** 2));
+    return w;
+  }
+  function endZAt(x, y, front = true) {        // бинарный поиск z на носу/корме, где поверхность проходит через x
+    let lo = front ? zf - g.rf - 0.3 : zr, hi = front ? zf : zr + g.rr + 0.3;
+    for (let k = 0; k < 28; k++) {
+      const mid = (lo + hi) / 2, sx = surfX(mid, y);
+      if (front) { if (sx > x) lo = mid; else hi = mid; } else { if (sx > x) hi = mid; else lo = mid; }
+    }
+    return (lo + hi) / 2;
+  }
+
+  // Сэмплы по z: густо у носа и кормы (там суперэллипс резко «складывается»)
+  const zs = [];
+  for (let k = 0; k <= 24; k++) zs.push(zr + g.rr * (k / 24) ** 2);
+  for (let z = zr + g.rr + 0.035; z < zf - g.rf; z += 0.035) zs.push(z);
+  for (let k = 0; k <= 30; k++) zs.push(zf - g.rf * (1 - k / 30) ** 2);
+  zs.sort((a, b) => a - b);
+  for (let i = zs.length - 1; i > 0; i--) if (zs[i] - zs[i-1] < 1e-4) zs.splice(i, 1);
+
+  const car = new THREE.Group(); car.name = 'Car';
+  const body = new THREE.Group(); body.name = 'Body'; car.add(body);
+  const paint = new THREE.MeshPhysicalMaterial({ color: '#3a3f47', metalness: .85, roughness: .1, clearcoat: 1, clearcoatRoughness: .05, envMapIntensity: 1.15 });
+  const glass = new THREE.MeshPhysicalMaterial({ color: '#020306', metalness: 0, roughness: .04, transparent: true, opacity: .88, envMapIntensity: 1.6, clearcoat: 1, clearcoatRoughness: .02 });
+  const interior = new THREE.MeshStandardMaterial({ color: spec.interior.seat, roughness: .7, metalness: .05 });
+  const panelMat = new THREE.MeshStandardMaterial({ color: '#16181d', roughness: .55, metalness: .2, side: THREE.BackSide });
+  const headMat = new THREE.MeshStandardMaterial({ color: '#000', emissive: '#e8f6ff', emissiveIntensity: 0, roughness: .2 });
+  const tailMat = new THREE.MeshStandardMaterial({ color: '#2a0006', emissive: '#ff0a2a', emissiveIntensity: 0, roughness: .3 });
+  const xrayLinesMat = new THREE.LineBasicMaterial({ color: new THREE.Color('#00f3ff').multiplyScalar(1.6), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+  const glowMat = new THREE.MeshStandardMaterial({ color: '#001a1e', emissive: '#00f3ff', emissiveIntensity: 0.25, roughness: .4, metalness: .2 });
+
+  // ---- 6.1 Корпус-лофт
+  const N = zs.length, M = BODY_TP.length;
+  const pos = new Float32Array(N * M * 3);
+  for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) pos.set(bodyPoint(zs[i], BODY_TP[j]), (i * M + j) * 3);
+
+  // Двери — это ячейки бокового сегмента R/L между арками. Режем их из корпуса и отдаём отдельным мешам.
+  const zA = fAx - Ra - 0.07, zC = rAx + Ra + 0.04, zB = zA - (zA - zC) * 0.53;
+  const doorCell = (i, j) => {
+    const s0 = BODY_TP[j].seg, s1 = BODY_TP[(j + 1) % M].seg;
+    if (!((s0 === 'R' && s1 === 'R') || (s0 === 'L' && s1 === 'L'))) return null;
+    const zm = (zs[i] + zs[i + 1]) / 2;
+    const side = s0 === 'R' ? 1 : -1;
+    if (zm < zA && zm > zB) return { side, k: 'F' };
+    if (zm < zB && zm > zC) return { side, k: 'R' };
+    return null;
+  };
+  const full = new THREE.BufferGeometry();
+  full.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  full.setIndex(loftIndices(N, M));
+  full.computeVertexNormals();                                   // нормали считаем по целому корпусу — швы дверей гладкие
+  const nrm = full.getAttribute('normal').array;
+  const bodyGeo = new THREE.BufferGeometry();
+  bodyGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  bodyGeo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  bodyGeo.setIndex(loftIndices(N, M, (i, j) => !!doorCell(i, j)));
+  const bodyMesh = new THREE.Mesh(bodyGeo, paint); bodyMesh.name = 'BodyShell';
+  body.add(bodyMesh);
+  full.dispose();
+
+  // ---- 6.2 Двери (петли спереди, распахиваются наружу)
+  const doors = [];
+  for (const side of [1, -1]) for (const k of ['F', 'R']) {
+    const vmap = new Map(), P = [], Nn = [], I = [];
+    const vid = (v) => { if (!vmap.has(v)) { vmap.set(v, P.length / 3); P.push(pos[v*3], pos[v*3+1], pos[v*3+2]); Nn.push(nrm[v*3], nrm[v*3+1], nrm[v*3+2]); } return vmap.get(v); };
+    for (let i = 0; i < N - 1; i++) for (let j = 0; j < M; j++) {
+      const dc = doorCell(i, j); if (!dc || dc.side !== side || dc.k !== k) continue;
+      const a = i * M + j, b = i * M + (j + 1) % M, c = (i + 1) * M + j, d = (i + 1) * M + (j + 1) % M;
+      I.push(vid(a), vid(b), vid(c), vid(b), vid(d), vid(c));
+    }
+    if (!I.length) continue;
+    // зазор 3 мм — получается настоящая линия притвора
+    let cy = 0, cz = 0; const nv = P.length / 3;
+    for (let v = 0; v < nv; v++) { cy += P[v*3+1]; cz += P[v*3+2]; }
+    cy /= nv; cz /= nv;
+    const zFront = k === 'F' ? zA : zB;
+    const hx = side * surfX(zFront, cy);
+    for (let v = 0; v < nv; v++) {
+      const dy = cy - P[v*3+1], dz = cz - P[v*3+2], l = Math.hypot(dy, dz) || 1;
+      P[v*3+1] += dy / l * 0.003; P[v*3+2] += dz / l * 0.003;
+      P[v*3] -= hx; P[v*3+2] -= zFront;
+    }
+    const dg = new THREE.BufferGeometry();
+    dg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    dg.setAttribute('normal', new THREE.Float32BufferAttribute(Nn, 3));
+    dg.setIndex(I);
+    const door = new THREE.Group(); door.name = `Door_${k}${side > 0 ? 'L' : 'R'}`; // +x — левый борт (LHD)
+    door.position.set(hx, 0, zFront);
+    door.add(new THREE.Mesh(dg, paint));
+    door.add(new THREE.Mesh(dg, panelMat));                    // изнанка — обшивка двери
+    // ручка
+    const handle = new THREE.Mesh(new RoundedBoxGeometry(0.022, 0.03, 0.2, 2, 0.01), sharedMats.chrome);
+    handle.position.set(side * 0.004, top(zFront - 0.3) - 0.17 - (zFront - 0.3 - cz) * 0, -0.38);
+    door.add(handle);
+    door.userData = { side, open: -side * (k === 'F' ? 1.05 : 1.0) }; // θ<0 для +x: x' = −d·sinθ > 0
+    body.add(door); doors.push(door);
+  }
+
+  // ---- 6.3 Капот: «целая» поверхность над отсеком, петля у лобового стекла
+  {
+    const z0 = g.cowl + 0.025, z1 = zf - 0.1, nz = 34, nx = 36;
+    const P = [], I = [];
+    for (let i = 0; i <= nz; i++) {
+      const z = lerp(z0, z1, i / nz), w = planW(z), [rT] = rads(z), xi = Math.max(w - rT, 1e-5), xh = Math.min((g.ufBay + 0.05) * w, xi * 0.98);
+      for (let k = 0; k <= nx; k++) {
+        const x = lerp(-xh, xh, k / nx);
+        P.push(x, top(z) + g.crown * (1 - (x / xi) ** 2) + 0.007, z);
+      }
+    }
+    for (let i = 0; i < nz; i++) for (let k = 0; k < nx; k++) {
+      const a = i * (nx + 1) + k, b = a + 1, c = a + nx + 1, d = c + 1;
+      I.push(a, c, b, b, c, d);
+    }
+    const hg = new THREE.BufferGeometry();
+    hg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); hg.setIndex(I); hg.computeVertexNormals();
+    const pivot = new THREE.Vector3(0, top(z0) + g.crown + 0.007, z0);
+    hg.translate(-pivot.x, -pivot.y, -pivot.z);
+    var hood = new THREE.Group(); hood.name = 'Hood'; hood.position.copy(pivot);
+    hood.add(new THREE.Mesh(hg, paint));
+    hood.add(new THREE.Mesh(hg, panelMat));
+    body.add(hood);
+  }
+
+  // ---- 6.4 Остекление: лофт с завалом боковин внутрь (tumblehome)
+  const gz = []; for (let z = roof.x0; z <= roof.x1 + 1e-6; z += 0.03) gz.push(z); if (gz[gz.length-1] < roof.x1) gz.push(roof.x1);
+  const glassPoint = (z, tp, lift = 0) => {
+    const [rT] = rads(z);
+    const belt = top(z) - 0.02, rf = roof(z), w = Math.max(planW(z) - 0.6 * rT, 1e-5);
+    const h = Math.max(rf - belt, 0.002);
+    const rG = Math.min(g.rG, h * 0.45, w * 0.9);
+    let [x, y] = rrPoint(tp, w, belt, belt + h, rG, Math.min(0.01, h * 0.3));
+    x *= 1 - g.tumble * clamp((y - belt) / Math.max(roof.max - belt, 0.1), 0, 1);
+    if (tp.seg === 'T') y += g.crown * 0.6 * (1 - (x / Math.max(w - rG, 1e-5)) ** 2);
+    return [x, y + lift, z];
+  };
+  {
+    const GN = gz.length, GM = GLASS_TP.length, P = new Float32Array(GN * GM * 3);
+    for (let i = 0; i < GN; i++) for (let j = 0; j < GM; j++) P.set(glassPoint(gz[i], GLASS_TP[j]), (i * GM + j) * 3);
+    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.BufferAttribute(P, 3));
+    gg.setIndex(loftIndices(GN, GM)); gg.computeVertexNormals();
+    const gm = new THREE.Mesh(gg, glass); gm.name = 'Glass'; gm.renderOrder = 2; body.add(gm);
+    // крыша в цвет кузова (SUV): верхние сегменты остекления, приподнятые на 8 мм
+    if (g.roofCap) {
+      const js = []; GLASS_TP.forEach((t, j) => { if (t.seg === 'TR' && t.s > 0.4 || t.seg === 'T' || t.seg === 'TL' && t.s < 0.6) js.push(j); });
+      const zsCap = gz.filter(z => roof(z) > roof.max - g.capDrop / 100);
+      const CP = [], CI = [];
+      zsCap.forEach(z => js.forEach(j => CP.push(...glassPoint(z, GLASS_TP[j], 0.008))));
+      const cm = js.length;
+      for (let i = 0; i < zsCap.length - 1; i++) for (let j = 0; j < cm - 1; j++) {
+        const a = i * cm + j, b = a + 1, c = a + cm, d = c + 1; CI.push(a, b, c, b, d, c);
+      }
+      const cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.Float32BufferAttribute(CP, 3)); cg.setIndex(CI); cg.computeVertexNormals();
+      body.add(new THREE.Mesh(cg, paint));
+      body.add(new THREE.Mesh(cg, panelMat));                 // потолок изнутри
+    }
+    // стойки B и C — чёрный лак поверх стекла
+    for (const zp of [zB + 0.02, zC + 0.1]) for (const side of [1, -1]) {
+      const pts = [];
+      for (let k = 0; k <= 8; k++) { const p = glassPoint(zp, { seg: 'R', s: k / 8 }); pts.push(new THREE.Vector3(side * (p[0] + 0.006), p[1], zp)); }
+      for (let k = 1; k <= 4; k++) { const p = glassPoint(zp, { seg: 'TR', s: k / 5 }); pts.push(new THREE.Vector3(side * (p[0] + 0.006), p[1] + 0.004, zp)); }
+      body.add(makeTube(pts, 0.04, g.roofCap ? paint : sharedMats.trim, false, 24));
+    }
+    // молдинг по линии окон
+    for (const side of [1, -1]) {
+      const pts = gz.filter((z, i) => i % 3 === 0).map(z => { const p = glassPoint(z, { seg: 'R', s: 0 }); return new THREE.Vector3(side * (p[0] + 0.004), p[1] + 0.012, z); });
+      body.add(makeTube(pts, 0.009, spec.geo.offroad ? sharedMats.trim : sharedMats.chrome, false, 96));
+    }
+  }
+
+  // ---- 6.5 Арки: подкрылки и чёрные расширители
+  const wheelX = hw - g.tw / 2 - 0.035;
+  for (const zc of [fAx, rAx]) for (const side of [1, -1]) {
+    const len = g.tw + 0.22;
+    const lg = new THREE.CylinderGeometry(Ra - 0.012, Ra - 0.012, len, 40, 1, true, -0.35, Math.PI + 0.7);
+    lg.rotateZ(Math.PI / 2);
+    const liner = new THREE.Mesh(lg, sharedMats.liner);
+    liner.position.set(side * (hw - len / 2 + 0.02), g.R, zc); body.add(liner);
+    const flare = g.offroad ? 0.06 : 0.016;
+    const tg = new THREE.TorusGeometry(Ra + flare * 0.4, flare, 8, 56, Math.PI + 0.24);
+    tg.rotateZ(-0.12); tg.rotateY(Math.PI / 2);
+    const trimArc = new THREE.Mesh(tg, sharedMats.trim);
+    trimArc.position.set(side * (surfX(zc, g.R + Ra * 0.8) - flare * 0.3), g.R, zc);
+    body.add(trimArc);
+  }
+  // пороги
+  for (const side of [1, -1]) {
+    const pts = []; for (let z = rAx + Ra + 0.02; z <= fAx - Ra - 0.02; z += 0.1) pts.push(new THREE.Vector3(side * (surfX(z, bot(z) + 0.06) + 0.004), bot(z) + 0.06, z));
+    body.add(makeTube(pts, 0.03, sharedMats.trim, false, 32));
+  }
+
+  // ---- 6.6 Оптика и решётки
+  const lightBar = (y, z0, front, xMin = 0, r = 0.013) => {
+    const pts = [];
+    const steps = 26;
+    const zEnd = front ? zf : zr;
+    const zs2 = []; for (let k = 0; k <= steps; k++) zs2.push(lerp(z0, zEnd, 1 - (1 - k / steps) ** 2));
+    const right = zs2.map(z => [surfX(z, y), z]).filter(([x]) => x >= xMin);
+    for (const [x, z] of right) pts.push(new THREE.Vector3(x + 0.006, y, z + (front ? 0.004 : -0.004)));
+    if (xMin <= 0) for (let k = right.length - 2; k >= 0; k--) pts.push(new THREE.Vector3(-right[k][0] - 0.006, y, right[k][1] + (front ? 0.004 : -0.004)));
+    return pts;
+  };
+  const headY = top(zf - 0.08) - 0.06, tailY = top(zr + 0.08) - 0.07;
+  if (spec.lights.front === 'bar') {
+    body.add(makeTube(lightBar(headY, zf - 0.55, true), 0.012, headMat, false, 120));
+    // нижний воздухозаборник
+    const iz = endZAt(0, bot(zf - 0.05) + 0.12, true);
+    const intake = new THREE.Mesh(new RoundedBoxGeometry(hw * 1.1, 0.1, 0.06, 2, 0.02), sharedMats.trim);
+    intake.position.set(0, bot(zf - 0.05) + 0.12, iz - 0.01); body.add(intake);
+  } else if (spec.lights.front === 'split') {
+    for (const side of [1, -1]) {
+      const pts = lightBar(headY, zf - 0.5, true, hw * 0.5, 0.02).map(p => new THREE.Vector3(p.x * side, p.y, p.z));
+      body.add(makeTube(pts, 0.02, headMat, false, 48));
+      const pts2 = lightBar(headY - 0.06, zf - 0.42, true, hw * 0.55).map(p => new THREE.Vector3(p.x * side, p.y, p.z));
+      body.add(makeTube(pts2, 0.008, headMat, false, 48));
+    }
+    const gy = headY - 0.17, gz2 = endZAt(0, gy, true);
+    const grille = new THREE.Mesh(new RoundedBoxGeometry(hw * 1.15, 0.26, 0.06, 3, 0.04), sharedMats.trim);
+    grille.position.set(0, gy, gz2 - 0.015); body.add(grille);
+    for (let k = 0; k < 5; k++) { const s = new THREE.Mesh(new THREE.BoxGeometry(hw * 1.05, 0.008, 0.02), sharedMats.chrome); s.position.set(0, gy - 0.09 + k * 0.045, gz2 + 0.02); body.add(s); }
+  } else if (spec.lights.front === 'round') {
+    const ly = top(zf) - 0.2;
+    for (const side of [1, -1]) {
+      const x = side * hw * 0.66, z = endZAt(Math.abs(x), ly, true);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.105, 0.016, 10, 40), headMat); ring.position.set(x, ly, z + 0.01); body.add(ring);
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.09, 32), new THREE.MeshPhysicalMaterial({ color:'#0d1116', metalness:.6, roughness:.05, clearcoat:1 })); lens.position.set(x, ly, z + 0.008); body.add(lens);
+    }
+    const grille = new THREE.Mesh(new RoundedBoxGeometry(hw * 0.86, 0.36, 0.06, 2, 0.02), sharedMats.trim);
+    grille.position.set(0, ly - 0.02, endZAt(0, ly, true) - 0.012); body.add(grille);
+    for (let k = -4; k <= 4; k++) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.32, 0.03), sharedMats.metal); s.position.set(k * hw * 0.095, ly - 0.02, endZAt(0, ly, true) + 0.02); body.add(s); }
+    // силовой бампер
+    const bb = new THREE.Mesh(new RoundedBoxGeometry(g.W * 0.92, 0.16, 0.16, 2, 0.03), sharedMats.trim);
+    bb.position.set(0, bot(zf) + 0.02, zf - 0.04); body.add(bb);
+  }
+  if (spec.lights.rear === 'bar') {
+    body.add(makeTube(lightBar(tailY, zr + 0.45, false), 0.016, tailMat, false, 120));
+  } else if (spec.lights.rear === 'tank') {
+    for (const side of [1, -1]) {
+      const x = side * (hw - 0.05), y = top(zr) - 0.28, z = endZAt(Math.abs(x) - 0.02, y, false);
+      const lamp = new THREE.Mesh(new RoundedBoxGeometry(0.07, 0.38, 0.05, 2, 0.015), tailMat); lamp.position.set(x, y, z - 0.01); body.add(lamp);
+    }
+    // запаска на задней двери
+    const spare = new THREE.Group();
+    const sg = new THREE.CylinderGeometry(g.R * 0.95, g.R * 0.95, 0.24, 40); sg.rotateX(Math.PI / 2);
+    spare.add(new THREE.Mesh(sg, sharedMats.trim));
+    const cap = new THREE.Mesh(new THREE.CircleGeometry(g.R * 0.7, 40), paint); cap.position.z = -0.121; cap.rotation.y = Math.PI; spare.add(cap);
+    spare.position.set(0, top(zr) - 0.32, zr - 0.13); body.add(spare);
+    // рейлинги
+    for (const side of [1, -1]) {
+      const pts = []; for (let z = roof.x0 + 0.25; z <= roof.x1 - 0.35; z += 0.2) { const p = glassPoint(z, { seg: 'T', s: side > 0 ? 0.04 : 0.96 }); pts.push(new THREE.Vector3(p[0], p[1] + 0.06, z)); }
+      if (pts.length > 2) body.add(makeTube(pts, 0.018, sharedMats.trim, false, 32));
+    }
+  }
+  // зеркала
+  for (const side of [1, -1]) {
+    const mz = g.cowl - 0.12, my = top(mz) + 0.1;
+    const mir = new THREE.Mesh(new RoundedBoxGeometry(0.2, 0.11, 0.1, 3, 0.04), paint);
+    mir.position.set(side * (surfX(mz, top(mz) - 0.05) + 0.1), my, mz); body.add(mir);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.03, 0.05), sharedMats.trim);
+    arm.position.set(side * (surfX(mz, top(mz) - 0.05) + 0.03), my - 0.04, mz); body.add(arm);
+  }
+
+  // ---- 6.7 Салон
+  const cabin = new THREE.Group(); cabin.name = 'Interior'; body.add(cabin);
+  const seatZ = g.cowl - 0.92;
+  const seat = (x, z, wide = 0.5) => {
+    const s = new THREE.Group();
+    const cushion = new THREE.Mesh(new RoundedBoxGeometry(wide, 0.13, 0.5, 3, 0.05), interior); cushion.position.y = 0.065; s.add(cushion);
+    const back = new THREE.Mesh(new RoundedBoxGeometry(wide, 0.62, 0.13, 3, 0.05), interior); back.position.set(0, 0.36, -0.25); back.rotation.x = -0.22; s.add(back);
+    if (wide < 0.7) { const hr = new THREE.Mesh(new RoundedBoxGeometry(wide * 0.55, 0.16, 0.1, 2, 0.04), interior); hr.position.set(0, 0.76, -0.33); hr.rotation.x = -0.22; s.add(hr); }
+    s.position.set(x, g.floor + 0.18, z); cabin.add(s);
+  };
+  seat(0.37, seatZ); seat(-0.37, seatZ);
+  if (spec.id === 'li') { seat(0.37, seatZ - 0.95); seat(-0.37, seatZ - 0.95); seat(0, seatZ - 1.85, 1.1); }
+  else seat(0, seatZ - 0.92, 1.25);
+  const dashY = top(g.cowl) - 0.08;
+  const dash = new THREE.Mesh(new RoundedBoxGeometry(planW(g.cowl - 0.25) * 1.75, 0.2, 0.42, 3, 0.06), new THREE.MeshStandardMaterial({ color:'#121419', roughness:.6 }));
+  dash.position.set(0, dashY - 0.06, g.cowl - 0.25); cabin.add(dash);
+  const amb = new THREE.Mesh(new THREE.BoxGeometry(planW(g.cowl - 0.25) * 1.7, 0.008, 0.008), new THREE.MeshBasicMaterial({ color: new THREE.Color(spec.interior.accent).multiplyScalar(3) }));
+  amb.position.set(0, dashY - 0.1, g.cowl - 0.46); cabin.add(amb);
+  const screenTex = drawScreen(spec);
+  const screenMat = new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: true, color: new THREE.Color(1, 1, 1).multiplyScalar(0.25) });
+  const screenW = spec.id === 'monjaro' ? 1.15 : 0.36;
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(screenW, 0.2), screenMat);
+  scr.position.set(spec.id === 'monjaro' ? 0.05 : 0, dashY + 0.1, g.cowl - 0.48); scr.rotation.set(-0.25, Math.PI, 0); cabin.add(scr);
+  if (spec.id === 'li') { // потолочный экран 2-го ряда
+    const rs = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.22), screenMat); rs.position.set(0, roof(seatZ - 0.35) - 0.2, seatZ - 0.35); rs.rotation.set(-0.5, Math.PI, 0); cabin.add(rs);
+  }
+  const wheelS = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.022, 10, 40), sharedMats.dark);
+  wheelS.position.set(0.37, dashY + 0.02, g.cowl - 0.6); wheelS.rotation.x = -0.35; cabin.add(wheelS);
+  const console_ = new THREE.Mesh(new RoundedBoxGeometry(0.22, 0.2, 0.9, 2, 0.04), sharedMats.dark);
+  console_.position.set(0, g.floor + 0.18, seatZ + 0.15); cabin.add(console_);
+
+  // ---- 6.8 Моторный отсек
+  const bayGroup = new THREE.Group(); bayGroup.name = 'Engine'; body.add(bayGroup);
+  const zBay = (g.cowl + zf) / 2 - 0.05, by = g.bay;
+  const bayGlow = [];
+  if (spec.power === 'ev') {
+    const mg = new THREE.CylinderGeometry(0.15, 0.15, 0.62, 32); mg.rotateZ(Math.PI / 2);
+    const motor = new THREE.Mesh(mg, sharedMats.metal); motor.position.set(0, by + 0.15, zBay + 0.15); bayGroup.add(motor);
+    const inv = new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.1, 0.38, 3, 0.03), sharedMats.dark); inv.position.set(0, by + 0.27, zBay - 0.12); bayGroup.add(inv);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.012, 0.012), glowMat); strip.position.set(0, by + 0.325, zBay - 0.12); bayGroup.add(strip); bayGlow.push(strip);
+    for (const s of [1, -1]) bayGroup.add(makeTube([new THREE.Vector3(s*0.25, by+0.25, zBay-0.1), new THREE.Vector3(s*0.42, by+0.2, zBay+0.05), new THREE.Vector3(s*0.36, by+0.12, zBay+0.25)], 0.022, sharedMats.orange, false, 24));
+    const res = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.14, 20), new THREE.MeshPhysicalMaterial({ color:'#7ff', transmission:.4, roughness:.2, transparent:true, opacity:.7 }));
+    res.position.set(-0.45, by + 0.12, zBay + 0.3); bayGroup.add(res);
+  } else {
+    const blockW = spec.power === 'erev' ? 0.46 : 0.56;
+    const block = new THREE.Mesh(new RoundedBoxGeometry(blockW, 0.24, 0.38, 3, 0.04), sharedMats.metal); block.position.set(-0.05, by + 0.13, zBay); bayGroup.add(block);
+    const cover = new THREE.Mesh(new RoundedBoxGeometry(blockW * 0.92, 0.08, 0.3, 3, 0.035), spec.id === 'tank' ? sharedMats.dark : new THREE.MeshPhysicalMaterial({ color: '#1b1d22', roughness:.3, metalness:.6, clearcoat:1 }));
+    cover.position.set(-0.05, by + 0.29, zBay); bayGroup.add(cover);
+    for (let k = 0; k < 4; k++) {
+      const x = -0.05 - blockW * 0.36 + k * blockW * 0.24;
+      bayGroup.add(makeTube([new THREE.Vector3(x, by + 0.25, zBay - 0.16), new THREE.Vector3(x, by + 0.34, zBay - 0.26), new THREE.Vector3(x * 0.5, by + 0.3, zBay - 0.34)], 0.022, sharedMats.metal, false, 16));
+    }
+    const turbo = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.035, 12, 24), new THREE.MeshStandardMaterial({ color:'#8a6a4a', metalness:.9, roughness:.35 }));
+    turbo.position.set(0.32, by + 0.14, zBay + 0.1); turbo.rotation.y = Math.PI / 2; bayGroup.add(turbo);
+    bayGroup.add(makeTube([new THREE.Vector3(0.32, by + 0.2, zBay + 0.1), new THREE.Vector3(0.4, by + 0.28, zBay + 0.3), new THREE.Vector3(0.1, by + 0.24, zBay + 0.42), new THREE.Vector3(-0.3, by + 0.2, zBay + 0.38)], 0.035, sharedMats.dark, false, 24));
+    const box = new THREE.Mesh(new RoundedBoxGeometry(0.22, 0.16, 0.2, 2, 0.03), sharedMats.dark); box.position.set(-0.45, by + 0.1, zBay - 0.2); bayGroup.add(box);
+    if (spec.power === 'erev') {
+      const mg = new THREE.CylinderGeometry(0.12, 0.12, 0.3, 28); mg.rotateZ(Math.PI / 2);
+      const gen = new THREE.Mesh(mg, sharedMats.metal); gen.position.set(0.34, by + 0.13, zBay - 0.12); bayGroup.add(gen);
+      bayGroup.add(makeTube([new THREE.Vector3(0.34, by + 0.25, zBay - 0.12), new THREE.Vector3(0.45, by + 0.18, zBay - 0.4), new THREE.Vector3(0.4, by + 0.05, zBay - 0.6)], 0.02, sharedMats.orange, false, 16));
+    }
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(blockW * 0.8, 0.01, 0.01), glowMat); strip.position.set(-0.05, by + 0.335, zBay + 0.155); bayGroup.add(strip); bayGlow.push(strip);
+  }
+
+  // ---- 6.9 Днище: батарея (EV/EREV) или трансмиссия/рама (ДВС) — видно в рентгене
+  const under = new THREE.Group(); under.name = 'Battery'; body.add(under);
+  const cellMat = new THREE.MeshStandardMaterial({ color: '#00151a', emissive: '#00f3ff', emissiveIntensity: 0, roughness: .4, metalness: .3 });
+  const caseMat = new THREE.MeshStandardMaterial({ color: '#0e1216', roughness: .5, metalness: .7, transparent: true, opacity: 1 });
+  const uy = bot(0) + 0.02;
+  if (spec.power === 'ev' || spec.power === 'erev') {
+    const z0 = rAx + 0.4, z1 = fAx - 0.42, bw = hw - 0.24;
+    const len = z1 - z0, depth = spec.power === 'ev' ? 0.11 : 0.08;
+    const cs = new THREE.Mesh(new THREE.BoxGeometry(bw * 2, depth, len), caseMat); cs.position.set(0, uy + depth / 2, (z0 + z1) / 2); under.add(cs);
+    const cols = 6, rows = Math.round(len / 0.22);
+    const cells = new THREE.InstancedMesh(new THREE.BoxGeometry(bw * 2 / cols * 0.84, depth * 0.5, len / rows * 0.82), cellMat, cols * rows);
+    const m4 = new THREE.Matrix4(); let n = 0;
+    for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) { m4.makeTranslation(-bw + bw * 2 / cols * (c + 0.5), uy + depth + 0.004, z0 + len / rows * (r + 0.5)); cells.setMatrixAt(n++, m4); }
+    under.add(cells);
+    // силовые кабели к моторам
+    for (const s of [1, -1]) {
+      under.add(makeTube([new THREE.Vector3(s*0.3, uy+depth, z1-0.05), new THREE.Vector3(s*0.32, uy+0.18, z1+0.25), new THREE.Vector3(s*0.25, by+0.1, zBay+0.1)], 0.02, sharedMats.orange, false, 24));
+    }
+    const rmg = new THREE.CylinderGeometry(0.13, 0.13, 0.5, 28); rmg.rotateZ(Math.PI / 2);
+    const rm = new THREE.Mesh(rmg, sharedMats.metal); rm.position.set(0, g.R + 0.02, rAx + 0.02); under.add(rm);
+    under.add(makeTube([new THREE.Vector3(0.2, uy + depth, z0 + 0.05), new THREE.Vector3(0.2, uy + 0.1, z0 - 0.2), new THREE.Vector3(0.12, g.R + 0.1, rAx + 0.15)], 0.02, sharedMats.orange, false, 16));
+  } else {
+    const tr = new THREE.Mesh(new RoundedBoxGeometry(0.3, 0.26, 0.7, 2, 0.06), caseMat); tr.position.set(0, uy + 0.16, g.cowl - 0.2); under.add(tr);
+    const dsg = new THREE.CylinderGeometry(0.035, 0.035, Math.abs(g.cowl - 0.55 - rAx), 16); dsg.rotateX(Math.PI / 2);
+    const ds = new THREE.Mesh(dsg, cellMat); ds.position.set(0, uy + 0.1, (g.cowl - 0.55 + rAx) / 2); under.add(ds);
+    const diff = new THREE.Mesh(new THREE.SphereGeometry(0.14, 24, 16), caseMat); diff.position.set(0, g.R, rAx); under.add(diff);
+    const tank = new THREE.Mesh(new RoundedBoxGeometry(1.0, 0.2, 0.55, 2, 0.05), cellMat); tank.position.set(0, uy + 0.12, rAx + 0.55); under.add(tank);
+    if (g.offroad) { // рама + неразрезной мост
+      for (const s of [1, -1]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.14, L * 0.86), cellMat); rail.position.set(s * 0.52, g.R - 0.02, -0.05); under.add(rail); }
+      for (const z of [fAx - 0.2, 0, rAx + 0.4]) { const cm = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.07, 0.07), cellMat); cm.position.set(0, g.R - 0.02, z); under.add(cm); }
+      const axg = new THREE.CylinderGeometry(0.05, 0.05, g.W - g.tw - 0.1, 16); axg.rotateZ(Math.PI / 2);
+      const axle = new THREE.Mesh(axg, cellMat); axle.position.set(0, g.R, rAx); under.add(axle);
+    }
+  }
+
+  // ---- 6.10 Колёса (не в группе body — пневма двигает кузов относительно колёс)
+  const wheels = [];
+  const rimMat = new THREE.MeshStandardMaterial({ color: spec.rim.color, metalness: 1, roughness: .28 });
+  const discMat = new THREE.MeshStandardMaterial({ color: '#6b6f74', metalness: .9, roughness: .45, emissive: '#ff3300', emissiveIntensity: 0 });
+  const calMat = new THREE.MeshPhysicalMaterial({ color: spec.caliper, metalness: .2, roughness: .35, clearcoat: 1 });
+  const rimR = g.R * (spec.rim.style === 'off' ? 0.6 : 0.72);
+  const tireProfile = [[rimR, -g.tw/2+0.012],[g.R-0.05, -g.tw/2],[g.R-0.012, -g.tw/2+0.02],[g.R, -g.tw/2+0.06],[g.R, g.tw/2-0.06],[g.R-0.012, g.tw/2-0.02],[g.R-0.05, g.tw/2],[rimR, g.tw/2-0.012]].map(([r, y]) => new THREE.Vector2(r, y));
+  const tireGeo = new THREE.LatheGeometry(tireProfile, 56); tireGeo.rotateZ(Math.PI / 2);
+  const tireMat = g.offroad ? new THREE.MeshStandardMaterial({ color:'#141516', roughness:.95, side:THREE.DoubleSide }) : sharedMats.rubber;
+  for (const zc of [fAx, rAx]) for (const side of [1, -1]) {
+    const root = new THREE.Group(); root.position.set(side * wheelX, g.R, zc);
+    if (side < 0) root.rotation.y = Math.PI;                       // локальный +x всегда наружу
+    const spin = new THREE.Group(); root.add(spin);
+    spin.add(new THREE.Mesh(tireGeo, tireMat));
+    if (g.offroad) for (let k = 0; k < 28; k++) { // грунтозацепы
+      const lug = new THREE.Mesh(new THREE.BoxGeometry(g.tw * 0.86, 0.022, 0.05), tireMat); const a = k / 28 * Math.PI * 2;
+      lug.position.set(0, Math.cos(a) * (g.R + 0.006), Math.sin(a) * (g.R + 0.006)); lug.rotation.x = a; spin.add(lug);
+    }
+    const barrel = new THREE.CylinderGeometry(rimR, rimR, g.tw - 0.03, 40, 1, true); barrel.rotateZ(Math.PI / 2);
+    spin.add(new THREE.Mesh(barrel, new THREE.MeshStandardMaterial({ color:'#2a2d31', metalness:1, roughness:.4, side:THREE.DoubleSide })));
+    const lipG = new THREE.TorusGeometry(rimR, 0.011, 8, 48); lipG.rotateY(Math.PI / 2);
+    const lip = new THREE.Mesh(lipG, rimMat); lip.position.x = g.tw / 2 - 0.018; spin.add(lip);
+    const face = g.tw / 2 - 0.03;
+    const spokes = { twin: [10, 0.03, 0.035], aero: [5, 0.13, 0.03], multi: [10, 0.026, 0.03], off: [6, 0.07, 0.05] }[spec.rim.style];
+    for (let k = 0; k < spokes[0]; k++) {
+      let a = k / spokes[0] * Math.PI * 2;
+      if (spec.rim.style === 'twin') a = Math.floor(k / 2) / 5 * Math.PI * 2 + (k % 2 ? 0.13 : -0.13);
+      const sp = new THREE.Mesh(new THREE.BoxGeometry(spokes[2], rimR - 0.06, spokes[1]), rimMat);
+      const rc = (rimR + 0.06) / 2;
+      sp.position.set(face, Math.cos(a) * rc, Math.sin(a) * rc); sp.rotation.x = a; spin.add(sp);
+    }
+    const hubG = new THREE.CylinderGeometry(0.075, 0.08, 0.06, 24); hubG.rotateZ(Math.PI / 2);
+    const hub = new THREE.Mesh(hubG, rimMat); hub.position.x = face; spin.add(hub);
+    const capG = new THREE.CircleGeometry(0.035, 20); capG.rotateY(Math.PI / 2);
+    const capM = new THREE.Mesh(capG, sharedMats.chrome); capM.position.x = face + 0.031; spin.add(capM);
+    const dG = new THREE.CylinderGeometry(rimR * 0.86, rimR * 0.86, 0.028, 40); dG.rotateZ(Math.PI / 2);
+    const disc = new THREE.Mesh(dG, discMat); disc.position.x = face - 0.075; spin.add(disc);
+    // суппорт — неподвижен, сверху сзади диска
+    const a = 0.6, rC = rimR * 0.74;
+    const cal = new THREE.Mesh(new RoundedBoxGeometry(0.075, rimR * 0.62, 0.09, 2, 0.025), calMat);
+    const zs3 = side > 0 ? -1 : 1;
+    cal.position.set(face - 0.07, Math.sin(a) * rC, zs3 * Math.cos(a) * rC); cal.rotation.x = -zs3 * a; root.add(cal);
+    car.add(root);
+    wheels.push({ root, spin, sign: side > 0 ? 1 : -1, front: zc === fAx, side });
+  }
+  // Контактная тень
+  const sh = new THREE.Mesh(new THREE.PlaneGeometry(g.W * 1.55, L * 1.22), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, opacity: .45 }));
+  sh.rotation.x = -Math.PI / 2; sh.position.y = 0.007; sh.renderOrder = 3; car.add(sh);
+
+  // ---- 6.11 Контурные линии для рентгена
+  {
+    const L2 = [];
+    for (let i = 0; i < N; i += 5) for (let j = 0; j < M; j += 2) { const a = (i * M + j) * 3, b = (i * M + (j + 2) % M) * 3; L2.push(pos[a], pos[a+1], pos[a+2], pos[b], pos[b+1], pos[b+2]); }
+    for (let j = 0; j < M; j += 11) for (let i = 0; i < N - 1; i++) { const a = (i * M + j) * 3, b = ((i + 1) * M + j) * 3; L2.push(pos[a], pos[a+1], pos[a+2], pos[b], pos[b+1], pos[b+2]); }
+    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(L2, 3));
+    const lines = new THREE.LineSegments(lg, xrayLinesMat); lines.visible = false; lines.renderOrder = 5; body.add(lines);
+    var xrayLines = lines;
+  }
+
+  // ---- Якоря хотспотов и ракурсы камеры (в координатах машины)
+  const zCab = seatZ;
+  const anchors = {
+    engine:  { p: () => new THREE.Vector3(0, top(zBay) + g.crown + 0.09, zBay + 0.15), n: new THREE.Vector3(0, 1, 0.45), body: true },
+    battery: { p: s => new THREE.Vector3(s * (planW(0) + 0.05), bot(0) + 0.16, (fAx + rAx) / 2), n: s => new THREE.Vector3(s, -0.05, 0), body: true, side: true },
+    cabin:   { p: s => { const q = glassPoint(zCab, { seg: 'R', s: 0.5 }); return new THREE.Vector3(s * (q[0] + 0.02), q[1], zCab); }, n: s => new THREE.Vector3(s, 0.25, 0), body: true, side: true },
+    brakes:  { p: s => new THREE.Vector3(s * (hw + 0.03), g.R + 0.04, fAx), n: s => new THREE.Vector3(s, 0, 0.25), body: false, side: true },
+  };
+  const eyeY = Math.min(g.floor + 0.9, roof(zCab) - 0.2);
+  const views = {
+    engine:  s => ({ pos: new THREE.Vector3(s * 1.0, top(fAx) + 1.05, zf + 2.0), target: new THREE.Vector3(0, g.bay + 0.3, zBay - 0.05) }),
+    cabin:   s => ({ pos: new THREE.Vector3(0.3, eyeY + 0.04, zCab - 0.45), target: new THREE.Vector3(0.05, dashY + 0.02, g.cowl - 0.35) }),
+    battery: s => ({ pos: new THREE.Vector3(s * (hw + 2.4), 0.55, 0.6), target: new THREE.Vector3(0, bot(0) + 0.12, 0) }),
+    brakes:  s => ({ pos: new THREE.Vector3(s * (hw + 1.45), g.R + 0.3, fAx + 1.05), target: new THREE.Vector3(s * (hw - 0.05), g.R, fAx) }),
+  };
+
+  car.traverse(o => { if (o.isMesh && !o.material.transparent && o.material !== glass) o.castShadow = true; });
+  return {
+    kind: 'procedural', group: car, body, hood, doors, wheels, paint, glass, headMat, tailMat, cellMat, caseMat, discMat, glowMat, bayGlow, screenMat, xrayLines,
+    xrayMats: [paint, glass, sharedMats.trim, interior, panelMat],
+    dims: { L, W: g.W, H: roof.max, R: g.R, fAx, rAx },
+    anchors, views, hoodOpen: -Math.PI / 4.2,
+  };
+}
+
+// Экран мультимедиа (CanvasTexture)
+function drawScreen(spec) {
+  return canvasTex(512, (g, s) => {
+    const gr = g.createLinearGradient(0, 0, s, s); gr.addColorStop(0, '#04131c'); gr.addColorStop(1, '#0a0420');
+    g.fillStyle = gr; g.fillRect(0, 0, s, s);
+    g.strokeStyle = 'rgba(0,243,255,.35)'; g.lineWidth = 2;
+    for (let i = 0; i < 9; i++) { g.beginPath(); g.moveTo(260, 60 + i * 50); g.bezierCurveTo(330, 40 + i * 47, 400, 120 + i * 30, 500, 80 + i * 45); g.stroke(); }
+    g.strokeStyle = '#ffaa00'; g.lineWidth = 6; g.beginPath(); g.moveTo(270, 430); g.bezierCurveTo(330, 330, 380, 300, 470, 140); g.stroke();
+    g.fillStyle = '#00f3ff'; g.font = '700 30px Orbitron, sans-serif'; g.fillText(spec.name, 26, 64);
+    g.fillStyle = '#fff'; g.font = '900 120px Orbitron, sans-serif'; g.fillText('0', 40, 250);
+    g.fillStyle = '#8ea3b8'; g.font = '600 24px Inter, sans-serif'; g.fillText('км/ч', 46, 290);
+    g.fillStyle = '#00f3ff'; g.fillRect(40, 360, 180, 10); g.fillStyle = 'rgba(255,255,255,.15)'; g.fillRect(220, 360, 30, 10);
+    g.fillStyle = '#cfe3f2'; g.font = '600 22px Inter, sans-serif'; g.fillText(spec.power === 'ev' ? 'Заряд 86%' : 'Готов', 40, 410);
+  }, true);
+}
+
+/* ==========================================================================
+   7. ЗАГРУЗКА РЕАЛЬНОЙ .GLB (с авто-поиском нод)
+   ========================================================================== */
+const draco = new DRACOLoader(); draco.setDecoderPath('vendor/three/examples/jsm/libs/draco/gltf/');
+const gltfLoader = new GLTFLoader(); gltfLoader.setDRACOLoader(draco); gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+
+// Пресеты материалов для моделей без текстур / с «чёрным» стеклом
+const MAT_PRESETS = {
+  glass:     () => new THREE.MeshPhysicalMaterial({ color:'#06080b', metalness:0, roughness:.03, transparent:true, opacity:.62, clearcoat:1, envMapIntensity:1.4 }),
+  rubber:    () => new THREE.MeshStandardMaterial({ color:'#151516', roughness:.92, metalness:0 }),
+  darkMetal: () => new THREE.MeshStandardMaterial({ color:'#2b2e33', roughness:.35, metalness:.85 }),
+  alloy:     () => new THREE.MeshStandardMaterial({ color:'#c7ccd2', roughness:.22, metalness:1 }),
+  chrome:    () => new THREE.MeshStandardMaterial({ color:'#e8ebee', roughness:.07, metalness:1 }),
+  trim:      () => new THREE.MeshStandardMaterial({ color:'#0e0f11', roughness:.55, metalness:.1 }),
+  tail:      () => Object.assign(new THREE.MeshStandardMaterial({ color:'#3a0508', roughness:.25, emissive:'#ff1a2a', emissiveIntensity:.4 }), { name: 'tail' }),
+  leather:   () => new THREE.MeshStandardMaterial({ color:'#2a2522', roughness:.62, metalness:0 }),
+};
+
+const rules_tail = cfg => !!(cfg.rules && cfg.rules.some(r => r[1] === 'tail'));
+
+async function buildGLBCar(spec, src) {
+  const cfg = GLB_CFG[spec.id] || {};
+  const gltf = src instanceof File ? await gltfLoader.parseAsync(await src.arrayBuffer(), '') : await gltfLoader.loadAsync(src);
+  const model = gltf.scene;
+  model.updateMatrixWorld(true);
+  const meshes = []; model.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingBox(); meshes.push(o); } });
+  const nameOf = o => `${o.name} ${o.parent ? o.parent.name : ''}`;
+  const matName = o => (o.material && o.material.name) || '';
+  // 0) Явно лишнее: стрелки размеров, «пол» из сцены автора и т. п.
+  meshes.forEach(o => { if ((cfg.hideNode && cfg.hideNode.test(nameOf(o))) || (cfg.hideMat && cfg.hideMat.test(matName(o)))) o.visible = false; });
+  const live = () => meshes.filter(o => o.visible);
+  // «Пол», подложки и фоны внутри файла модели: огромные плоские меши — прячем (иначе машина стоит на плите)
+  { const all = new THREE.Box3(); live().forEach(o => all.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)));
+    const ext = Math.max(...all.getSize(new THREE.Vector3()).toArray());
+    live().forEach(o => { const v = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld).getSize(new THREE.Vector3()), dims = v.toArray().sort((a, b) => a - b);
+      if (dims[0] < dims[2] * 0.01 && dims[2] > ext * 0.6 && dims[1] > ext * 0.3) o.visible = false;          // плита/фон
+      if (v.x < ext * 0.06 && v.z < ext * 0.06 && v.y > ext * 0.3) o.visible = false; }); }                         // тонкий «столб»
+
+  // 1) Двери из анимации модели: ищем позы «закрыто» и «открыто» по габариту машины
+  let doorAnim = null;
+  if (cfg.doors && gltf.animations.length) {
+    const mixer = new THREE.AnimationMixer(model);
+    const acts = gltf.animations.map(clip => { const a = mixer.clipAction(clip); a.play(); a.paused = true; a.time = 0; return { a, d: clip.duration, tc: 0, to: 0 }; });
+    const vol = () => { mixer.update(0); model.updateMatrixWorld(true); const bx = new THREE.Box3(); live().forEach(o => bx.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld))); const v = bx.getSize(new THREE.Vector3()); return v.x * v.y * v.z; };
+    const N = 24;
+    for (const pass of ['closed', 'open']) for (const e of acts) {
+      let best = pass === 'closed' ? Infinity : -Infinity, bt = 0, v0 = null, v1 = null;
+      for (let i = 0; i <= N; i++) {
+        const t = e.d * i / N; e.a.time = t; const v = vol();
+        v0 = v0 === null ? v : Math.min(v0, v); v1 = v1 === null ? v : Math.max(v1, v);
+        if (pass === 'closed' ? v < best : v > best) { best = v; bt = t; }
+      }
+      if (pass === 'closed') e.tc = bt; else { e.to = bt; e.useful = (v1 - v0) / v0 > 0.01; }   // крутящиеся колёса и т. п. — не двери
+      e.a.time = e.tc;
+    }
+    const used = acts.filter(e => e.useful);
+    acts.forEach(e => { e.a.time = e.tc; }); mixer.update(0);
+    if (used.length) doorAnim = { mixer, p: 0, apply() { used.forEach(e => { e.a.time = e.tc + (e.to - e.tc) * this.p; }); mixer.update(0); } };
+    model.updateMatrixWorld(true);
+  }
+
+  if (!doorAnim && cfg.doorNodes) {
+    const pivots = []; model.traverse(o => { if (cfg.doorNodes.test(o.name)) pivots.push(o); });
+    const I = new THREE.Quaternion();
+    pivots.forEach(o => { o.userData.qOpen = o.quaternion.clone(); o.quaternion.identity(); });
+    if (pivots.length) doorAnim = { p: 0, apply() { pivots.forEach(o => o.quaternion.slerpQuaternions(I, o.userData.qOpen, this.p)); } };
+    model.updateMatrixWorld(true);
+  }
+
+  // 2) Отсев мусора: всё, что не помещается в раздутый на 45% габарит кузова, прячем
+  const tris = o => (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+  const wbox = o => o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+  const bodyMeshes = cfg.core ? live().filter(o => cfg.core.test(nameOf(o)))
+    : cfg.paint ? live().filter(o => cfg.paint.test(matName(o))) : [];
+  const core = new THREE.Box3();
+  if (bodyMeshes.length) bodyMeshes.forEach(o => core.union(wbox(o)));
+  else {
+    // неизвестная модель: ядро — самые «тяжёлые» меши, вместе дающие 70% полигонов
+    // (кузов, колёса, салон); столбы, таблички и подставки в него не попадают
+    const ms = live().slice().sort((a, b) => tris(b) - tris(a)), total = ms.reduce((t, o) => t + tris(o), 0);
+    let acc = 0; for (const o of ms) { core.union(wbox(o)); acc += tris(o); if (acc > total * 0.7) break; }
+  }
+  core.expandByVector(core.getSize(new THREE.Vector3()).multiplyScalar(0.45));
+  let hidden = 0;
+  if (!cfg.noCull) live().forEach(o => { if (!core.containsBox(wbox(o))) { o.visible = false; hidden++; } });
+  const visBox = () => { const bx = new THREE.Box3(); model.updateMatrixWorld(true); live().forEach(o => bx.union(wbox(o))); return bx; };
+
+  // 3) Ориентация: длинная ось → z, нос → +z (cfg.rotY для моделей, смотрящих назад); масштаб по реальной длине
+  let box = visBox(), size = box.getSize(new THREE.Vector3());
+  model.rotation.y = (size.x > size.z ? Math.PI / 2 : 0) + (cfg.rotY || 0);
+  box = visBox(); size = box.getSize(new THREE.Vector3());
+  const k = spec.geo.L ? spec.geo.L / size.z : (size.z > 2.5 && size.z < 7 ? 1 : 4.7 / size.z); model.scale.multiplyScalar(k);
+  box = visBox(); const c = box.getCenter(new THREE.Vector3());
+  // на пол ставим по шинам (если нашлись по имени), иначе по нижней точке модели
+  const tyres = live().filter(o => /tire|tyre|wheel|luntai|lungu|колес|шин/i.test(`${o.name} ${o.parent ? o.parent.name : ''} ${matName(o)}`));
+  let groundY = box.min.y;
+  if (tyres.length) { model.updateMatrixWorld(true); groundY = Math.min(...tyres.map(o => wbox(o).min.y)); }
+  model.position.x -= c.x; model.position.z -= c.z; model.position.y -= groundY;     // колёса ровно на полу
+  const car = new THREE.Group(); car.name = 'Car'; const body = new THREE.Group(); const flipper = new THREE.Group(); flipper.add(model); body.add(flipper); car.add(body);
+  box = visBox(); size = box.getSize(new THREE.Vector3());
+  // 3b) Петли. Ось детали ставим туда, где у настоящей машины петля:
+  //     дверь — передний наружный край (вращение вокруг Y, задний край уходит наружу: θ = −знак(x)·60°),
+  //     капот — задний край у лобового стекла (вокруг X, θ < 0 поднимает нос капота),
+  //     багажник — верхний передний край (вокруг X, θ > 0 поднимает дверь багажника).
+  const hingedParts = [];
+  let hingedHood = null;
+  if (cfg.hinged) {
+    car.updateMatrixWorld(true);
+    const make = (node, kind) => {
+      const bx = new THREE.Box3().setFromObject(node); if (bx.isEmpty()) return null;
+      const ctr = bx.getCenter(new THREE.Vector3()), piv = new THREE.Group();
+      if (kind === 'door') { const sx = Math.sign(ctr.x) || 1; piv.position.set(sx > 0 ? bx.max.x : bx.min.x, ctr.y, bx.max.z); piv.userData = { axis: 'y', open: -sx * 1.05, base: 0, side: sx }; }
+      else if (kind === 'hood') { piv.position.set(ctr.x, bx.max.y, bx.min.z); piv.userData = { axis: 'x', base: 0 }; }
+      else { piv.position.set(ctr.x, bx.max.y, bx.max.z); piv.userData = { axis: 'x', open: Math.PI / 3.4, base: 0 }; }
+      piv.name = `${node.name}_hinge`; body.add(piv); piv.updateMatrixWorld(true); piv.attach(node);
+      return piv;
+    };
+    const list = []; model.traverse(o => list.push(o));
+    list.forEach(o => {
+      if (cfg.hinged.door && cfg.hinged.door.test(o.name)) { const p = make(o, 'door'); if (p) hingedParts.push(p); }
+      else if (cfg.hinged.trunk && cfg.hinged.trunk.test(o.name)) { const p = make(o, 'trunk'); if (p) hingedParts.push(p); }
+      else if (cfg.hinged.hood && cfg.hinged.hood.test(o.name)) hingedHood = make(o, 'hood');
+    });
+  }
+  const find = re => { let r = null; model.traverse(o => { if (!r && re.test(o.name)) r = o; }); return r; };
+  const nodes = {
+    hood: hingedHood, engine: find(/engine|motor|двиг/i), battery: find(/batter|батар/i),
+    wheelFL: find(/wheel.?f.?l|wheel.?l.?f|wheel_front_left/i),
+    doors: hingedParts,
+  };
+
+  // 4) Материалы: кузов → наш лак (свотчи работают), стекло → тонировка, правила по именам деталей
+  const paintRe = cfg.paint || /^(paint|body|carpaint|car_paint|кузов)/i;
+  const paint = new THREE.MeshPhysicalMaterial({ color:'#3a3f47', metalness:.85, roughness:.1, clearcoat:1, clearcoatRoughness:.05 });
+  const presets = {}; const preset = k => (presets[k] ||= MAT_PRESETS[k]());
+  let painted = 0;
+  const xrayMats = [paint]; const seen = new Set();
+  model.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = true;
+    if (cfg.rules) {
+      const n = nameOf(o).replace(/Object_\d+/g, '');
+      const rule = cfg.rules.find(([re]) => re.test(n));
+      const key = rule ? rule[1] : 'trim';
+      if (key === 'paint') { o.material = paint; painted++; } else o.material = preset(key);
+      if (key === 'glass') o.castShadow = false;
+    } else {
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      mats.forEach((m, i) => {
+        let r = null;
+        if (!cfg.baked && paintRe.test(m.name || '')) { r = paint; painted++; }
+        else if (cfg.glass && cfg.glass.test(m.name || '')) { r = preset('glass'); o.castShadow = false; }
+        if (r) { if (Array.isArray(o.material)) o.material[i] = r; else o.material = r; return; }
+        if (m.transparent) o.castShadow = false;
+        if (cfg.baked && !seen.has(m)) { m.metalness = Math.min(m.metalness, 0.25); m.roughness = Math.max(m.roughness, 0.55); m.envMapIntensity = 0.7; }
+        if (!seen.has(m)) { seen.add(m); xrayMats.push(m); }
+      });
+    }
+  });
+  Object.values(presets).forEach(m => xrayMats.push(m));
+  // фары и фонари реальной модели: включаются кнопкой «Фары»
+  const lightMats = [], tailMats = [];
+  if (cfg.lights || cfg.tail) model.traverse(o => {
+    if (!o.isMesh || !o.material || !o.material.isMeshStandardMaterial) return;
+    const n = o.material.name || '';
+    if (cfg.lights && cfg.lights.test(n) && !lightMats.includes(o.material)) { o.material.emissive = new THREE.Color('#eaf4ff'); lightMats.push(o.material); }
+    if (cfg.tail && cfg.tail.test(n) && !tailMats.includes(o.material)) { o.material.emissive = new THREE.Color('#ff1a2a'); tailMats.push(o.material); }
+  });
+  if (rules_tail(cfg)) Object.values(presets).forEach(m => { if (m.name === 'tail') tailMats.push(m); });
+  if (hidden) console.info(`[${spec.id}] скрыто посторонних объектов: ${hidden}`);
+  // мягкое контактное пятно под машиной (как у процедурной) — плюс настоящая тень от sun
+  { const sh = new THREE.Mesh(new THREE.PlaneGeometry(size.x * 1.45, size.z * 1.15), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, opacity: .35 }));
+    sh.rotation.x = -Math.PI / 2; sh.position.y = 0.007; sh.renderOrder = 3; car.add(sh); }
+  const glow = new THREE.MeshStandardMaterial({ color:'#001a1e', emissive:'#00f3ff', emissiveIntensity:0 });
+  const H = size.y, W = size.x, L = size.z, R = spec.geo.R;
+  const fAx = spec.geo.auto ? L * 0.31 : L / 2 - spec.geo.fo, rAx = spec.geo.auto ? fAx - L * 0.6 : fAx - spec.geo.wb;   // своя модель: оси по пропорциям
+  const wp = n => { const v = new THREE.Vector3(); n.getWorldPosition(v); return car.worldToLocal(v); };
+  const anchors = {
+    engine:  { p: () => nodes.engine ? wp(nodes.engine).add(new THREE.Vector3(0, 0.25, 0)) : new THREE.Vector3(0, H * 0.6, L * 0.33), n: new THREE.Vector3(0, 1, 0.45), body: true },
+    battery: { p: s => new THREE.Vector3(s * (W / 2 + 0.05), H * 0.16, 0), n: s => new THREE.Vector3(s, 0, 0), body: true, side: true },
+    cabin:   { p: s => new THREE.Vector3(s * W * 0.45, H * 0.72, -0.1), n: s => new THREE.Vector3(s, .25, 0), body: true, side: true },
+    brakes:  { p: s => new THREE.Vector3(s * (W / 2 + 0.03), R, fAx), n: s => new THREE.Vector3(s, 0, .25), body: false, side: true },
+  };
+  const views = {
+    engine:  s => ({ pos: new THREE.Vector3(s * 1.3, H + 0.75, L / 2 + 2.3), target: new THREE.Vector3(0, H * 0.5, L * 0.25) }),
+    cabin:   s => ({ pos: new THREE.Vector3(s * (W / 2 + 1.5), H * 0.95, 0.9), target: new THREE.Vector3(0, H * 0.62, 0.15) }),   // салон через окно водителя
+    battery: s => ({ pos: new THREE.Vector3(s * (W / 2 + 3.6), 0.95, 1.2), target: new THREE.Vector3(0, H * 0.28, 0) }),
+    brakes:  s => ({ pos: new THREE.Vector3(s * (W / 2 + 1.05), R + 0.2, fAx + 0.8), target: new THREE.Vector3(s * (W / 2 - 0.05), R, fAx) }),
+  };
+  const hoodNode = nodes.hood;
+  return {
+    kind: 'glb', paintable: painted > 0, doorAnim, flip() { flipper.rotation.y += Math.PI; }, group: car, body, hood: hoodNode, hoodBase: hoodNode ? hoodNode.rotation.x : 0,
+    doors: nodes.doors, lightMats, tailMats,
+    wheels: [], paint, glass: null, headMat: null, tailMat: null, cellMat: glow, caseMat: null, discMat: null, glowMat: glow, bayGlow: [], screenMat: null, xrayLines: null,
+    xrayMats, dims: { L, W, H, R, fAx, rAx }, anchors, views, hoodOpen: -Math.PI / 4.2, glbNodes: nodes,
+  };
+}
+
+/* ==========================================================================
+   8. СОСТОЯНИЕ, РИГИ, ПЕРЕКЛЮЧЕНИЕ МОДЕЛЕЙ
+   ========================================================================== */
+const state = { envIdx: 0, ringK: 0.7, idx: 0, mode: 'orbit', part: null, busy: false, xray: false, xrayAuto: false, doors: false, lights: true, launching: false, saved: null, wheelSpin: 0, lastInteract: 0 };
+const rigs = new Map();     // index → rig
+const glbOverrides = new Map();
+const glbLoading = new Map();   // index → Promise загрузки реальной модели
+const canFetch = location.protocol.startsWith('http');
+// Реальные модели грузим по очереди: сначала та, что на экране, остальные — фоном по одной
+function loadCarGLB(i) {
+  if (!canFetch || glbOverrides.has(i)) return Promise.resolve();
+  if (!glbLoading.has(i)) {
+    const url = `models/${CARS[i].id}.glb`;
+    glbLoading.set(i, fetch(url, { method: 'HEAD' }).then(h => h.ok ? useGLB(url, i, true) : null).catch(() => {}).finally(() => { if (i === state.idx) toast.hide && toast.hide(); }));
+  }
+  return glbLoading.get(i);
+}
+let rig = null;
+const stage = new THREE.Group(); scene.add(stage);
+
+function getRig(i) {
+  if (!rigs.has(i)) { const r = buildProceduralCar(CARS[i]); r.paintKey = CARS[i].paint; applyPaint(r, CARS[i].paint); rigs.set(i, r); }
+  return rigs.get(i);
+}
+function applyPaint(r, key) {
+  const p = PAINTS[key]; r.paintKey = key;
+  r.paint.color.set(p.color); r.paint.metalness = p.metalness; r.paint.roughness = p.roughness;
+  r.paint.iridescence = p.irid || 0; r.paint.iridescenceIOR = 1.7; r.paint.iridescenceThicknessRange = [180, 620];
+  r.paint.sheen = p.irid ? 0.3 : 0; r.paint.needsUpdate = true;
+}
+
+// Пневма: сдвиг кузова по Y относительно колёс (мм → м)
+function setClearance(mm, instant = false) {
+  const spec = CARS[state.idx]; if (!rig) return;
+  const base = spec.air ? spec.air.base : spec.clear;
+  const dy = (mm - base) / 1000;
+  if (instant) rig.body.position.y = dy; else gsap.to(rig.body.position, { y: dy, duration: .6, ease: 'power2.out' });
+}
+
+async function showCar(i, dir = 1, first = false) {
+  if (state.busy && !first) return;
+  state.busy = true;
+  if (canFetch && !glbOverrides.has(i) && !first) { loadCarGLB(i); toast('Загружаю 3D-модель…', 6000); }
+  if (state.mode === 'inspect') { await backToOrbit(true); state.busy = true; }
+  if (state.doors) setDoors(false, true);        // у уезжающей машины двери закрываем сразу
+  const old = rig;
+  const nextRig = glbOverrides.get(i) || getRig(i);
+  state.idx = i;
+  updateUI();
+  // уезжает старая
+  if (old && !first) {
+    Sound.whoosh(1.0);
+    await new Promise(res => gsap.to(old.group.position, { z: 13 * dir, duration: .85, ease: 'power2.in', onComplete: res }));
+    stage.remove(old.group); old.group.position.z = 0;
+  }
+  rig = nextRig;
+  setDoors(false, true);
+  setHood(false, true);
+  syncLightsTool();
+  rig.body.position.y = 0;
+  setXray(state.xray, true);
+  stage.add(rig.group);
+  // приезжает новая, с торможением
+  rig.group.position.z = first ? 0 : -13 * dir;
+  const spec = CARS[i];
+  setOverviewTarget();
+  if (!first) { Sound.arrive(spec); await new Promise(res => gsap.to(rig.group.position, { z: 0, duration: 1.25, ease: 'power3.out', onComplete: res })); }
+  welcomeLights();
+  state.busy = false;
+}
+
+// Фары: процедурная машина — headMat/tailMat, реальная — материалы фар/фонарей из GLB_CFG
+const HEAD_ON = 4.2, TAIL_ON = 3.2;
+function lightTargets(r = rig) {
+  if (!r) return { head: [], tail: [] };
+  return { head: r.headMat ? [r.headMat] : (r.lightMats || []), tail: r.tailMat ? [r.tailMat] : (r.tailMats || []) };
+}
+function setLights(on, dur = .4) {
+  const { head, tail } = lightTargets();
+  head.forEach(m => gsap.to(m, { emissiveIntensity: on ? HEAD_ON : 0, duration: dur }));
+  tail.forEach(m => gsap.to(m, { emissiveIntensity: on ? TAIL_ON : 0, duration: dur }));
+}
+function syncLightsTool() {
+  const { head, tail } = lightTargets(), has = head.length + tail.length > 0, b = document.getElementById('tLights');
+  b.disabled = !has; b.title = has ? '' : 'У этой модели фары не отделены';
+  b.setAttribute('aria-pressed', has && state.lights);
+}
+function welcomeLights() {
+  const { head, tail } = lightTargets(); if (!head.length && !tail.length) return;
+  const on = state.lights;
+  head.forEach(m => gsap.timeline().to(m, { emissiveIntensity: 1.5, duration: .08 }).to(m, { emissiveIntensity: 0, duration: .08 }).to(m, { emissiveIntensity: on ? HEAD_ON : 0, duration: .5, ease: 'power2.out' }));
+  tail.forEach(m => gsap.to(m, { emissiveIntensity: on ? TAIL_ON : 0, duration: .5, delay: .16 }));
+}
+
+/* ==========================================================================
+   9. КАМЕРА: ОБЗОР ↔ ИНСПЕКЦИЯ (GSAP)
+   ========================================================================== */
+const ORBIT_LIMITS = () => ({ minAzimuthAngle: -Infinity, maxAzimuthAngle: Infinity, minPolarAngle: 0.22, maxPolarAngle: Math.PI / 2 - 0.02 });
+function overviewPose() {
+  // Машина должна влезть в кадр по ширине и высоте. Если для этого надо отъехать дальше стен помещения —
+  // не отъезжаем, а расширяем угол обзора (до 72°).
+  const d = rig.dims, A = camera.aspect, tall = A < 1;
+  const dir = (tall ? new THREE.Vector3(0.36, 0.2, 0.91) : new THREE.Vector3(0.62, 0.2, 0.76)).normalize();   // 3/4 спереди
+  const target = new THREE.Vector3(0, d.H * 0.38, 0);
+  const az = Math.atan2(dir.x, dir.z), W = d.W || d.L * 0.4;
+  const half = tall ? ((d.L / 2) * Math.abs(Math.sin(az)) + (W / 2) * Math.abs(Math.cos(az))) * 1.12 : d.L * 0.62;
+  const fit = vf => { const hf = 2 * Math.atan(Math.tan(vf / 2) * A); return half / Math.tan(Math.min(vf, hf) / 2); };
+  let vf = THREE.MathUtils.degToRad(tall ? 62 : 36), dist = fit(vf);
+  const lim = roomLimit();
+  if (dist > lim) {
+    const need = 2 * Math.atan(half / lim);                          // какой угол нужен по узкой стороне кадра
+    vf = Math.min(THREE.MathUtils.degToRad(72), A < 1 ? 2 * Math.atan(Math.tan(need / 2) / A) : Math.max(vf, need));
+    dist = Math.min(fit(vf), lim);
+  }
+  const fovDeg = THREE.MathUtils.radToDeg(vf);
+  if (Math.abs(camera.fov - fovDeg) > 0.1) { camera.fov = fovDeg; camera.updateProjectionMatrix(); }
+  return { pos: target.clone().addScaledVector(dir, dist), target, dist };
+}
+// дальше этого радиуса от центра камера упрётся в стены (габариты помещения включают наружные балки — берём с запасом)
+function roomLimit() {
+  if (!roomBox) return Infinity;
+  const sz = roomBox.getSize(new THREE.Vector3());
+  return Math.max(4, Math.min(sz.x, sz.z) / 2 - 1.0);
+}
+function applyOrbitLimits(o) {
+  controls.maxDistance = Math.min(o.dist * 1.8, roomLimit());
+  controls.minDistance = Math.min(o.dist * 0.55, controls.maxDistance - 0.5);
+}
+function setOverviewTarget() {
+  const o = overviewPose();
+  applyOrbitLimits(o);
+  if (!state.inited) { camera.position.copy(o.pos); controls.target.copy(o.target); state.inited = true; }
+  else gsap.to(controls.target, { x: o.target.x, y: o.target.y, z: o.target.z, duration: 1, ease: 'power2.inOut' });
+}
+
+/* Перелёт камеры: одновременно интерполируем camera.position и controls.target
+   по одному прогрессу t (power3.inOut).
+   Позиция идёт по квадратичной кривой Безье P(t) = (1-t)²·P0 + 2(1-t)t·C + t²·P1,
+   где контрольная точка C — середина пути, вынесенная наружу из «цилиндра» кузова
+   (радиус ≈ 0.6·L) и поднятая над крышей: камера облетает машину, а не прошивает её.
+   Цель камеры — линейная интерполяция T(t) = lerp(T0, T1, t). */
+function flyTo(toPos, toTarget, dur = 1.6) {
+  return new Promise(res => {
+    const p0 = camera.position.clone(), t0 = controls.target.clone();
+    const mid = p0.clone().add(toPos).multiplyScalar(0.5);
+    const out = new THREE.Vector3(mid.x, 0, mid.z);
+    const minR = rig.dims.L * 0.62;
+    if (out.length() < minR) out.setLength(minR);
+    const ctrl = new THREE.Vector3(out.x, Math.max(mid.y, rig.dims.H * 0.85) + 0.25, out.z);
+    const prox = { t: 0 };
+    controls.enabled = false;
+    Sound.whoosh(dur);
+    gsap.to(prox, {
+      t: 1, duration: dur, ease: 'power3.inOut',
+      onUpdate: () => {
+        const t = prox.t, a = (1 - t) * (1 - t), b = 2 * (1 - t) * t, c = t * t;
+        camera.position.set(a * p0.x + b * ctrl.x + c * toPos.x, a * p0.y + b * ctrl.y + c * toPos.y, a * p0.z + b * ctrl.z + c * toPos.z);
+        controls.target.lerpVectors(t0, toTarget, t);
+        camera.lookAt(controls.target);
+      },
+      onComplete: res,
+    });
+  });
+}
+
+// После прилёта — микро-осмотр: ±0.4 рад по азимуту, ±0.25 по полярному углу, зум 0.7–1.35
+function lockMicro() {
+  const off = camera.position.clone().sub(controls.target);
+  const sph = new THREE.Spherical().setFromVector3(off);
+  controls.minAzimuthAngle = sph.theta - 0.4; controls.maxAzimuthAngle = sph.theta + 0.4;
+  controls.minPolarAngle = Math.max(0.05, sph.phi - 0.25); controls.maxPolarAngle = Math.min(Math.PI / 2 - 0.02, sph.phi + 0.25);
+  controls.minDistance = sph.radius * 0.7; controls.maxDistance = sph.radius * 1.35;
+}
+
+const sideOfCamera = () => {
+  const local = rig.group.worldToLocal(camera.position.clone());
+  return local.x >= 0 ? 1 : -1;
+};
+
+async function inspect(id) {
+  if (state.mode !== 'orbit' || state.busy || !rig) return;
+  emit('inspect', { part: id });
+  state.busy = true; state.mode = 'inspect'; state.part = id;
+  document.body.classList.add('inspect');
+  Sound.click(1200);
+  state.saved = { pos: camera.position.clone(), target: controls.target.clone() };
+  controls.autoRotate = false;
+  const s = sideOfCamera();
+  const v = rig.views[id](s);
+  const pos = rig.group.localToWorld(v.pos.clone()), tgt = rig.group.localToWorld(v.target.clone());
+  renderCard();
+  setCardOpen(true);
+  if (id === 'engine') setHood(true);
+  if (id === 'battery' && !state.xray) { state.xrayAuto = true; setXray(true); }
+  if (id === 'brakes' && rig.discMat) gsap.to(rig.discMat, { emissiveIntensity: 0.55, duration: 1.4, delay: .6 });
+  if (id === 'cabin' && rig.screenMat) gsap.to(rig.screenMat.color, { r: 1.4, g: 1.4, b: 1.4, duration: 1, delay: 1 });
+  if (id === 'cabin' && state.doors) setDoors(false);
+  await flyTo(pos, tgt, 1.7);
+  Object.assign(controls, ORBIT_LIMITS());
+  lockMicro();
+  controls.enabled = true; controls.update();
+  state.busy = false;
+}
+
+async function backToOrbit(fast = false) {
+  if (state.mode !== 'inspect') return;
+  state.busy = true;
+  const id = state.part;
+  if (id === 'engine') setHood(false);
+  if (state.xrayAuto) { state.xrayAuto = false; setXray(false); }
+  if (rig.discMat) gsap.to(rig.discMat, { emissiveIntensity: 0, duration: .8 });
+  if (rig.screenMat) gsap.to(rig.screenMat.color, { r: .25, g: .25, b: .25, duration: .8 });
+  const o = overviewPose();
+  const back = state.saved && state.saved.pos.distanceTo(o.target) > o.dist * 0.5 ? state.saved : o;
+  Object.assign(controls, ORBIT_LIMITS());
+  applyOrbitLimits(o);
+  await flyTo(back.pos.clone(), back.target.clone(), fast ? 0.9 : 1.5);
+  state.mode = 'orbit'; state.part = null;
+  document.body.classList.remove('inspect');
+  controls.enabled = true; controls.autoRotate = !reduceMotion; controls.update();
+  renderCard();
+  setCardOpen(false);
+  state.busy = false;
+}
+
+function setHood(open, instant = false) {
+  if (!rig || !rig.hood) return;
+  const base = rig.kind === 'glb' ? rig.hoodBase : 0;
+  const x = open ? base + rig.hoodOpen : base;
+  if (instant) { rig.hood.rotation.x = x; return; }
+  if (open) setTimeout(() => Sound.hood(), 350);
+  gsap.to(rig.hood.rotation, { x, duration: open ? 1.25 : 0.9, delay: open ? 0.35 : 0, ease: open ? 'power2.inOut' : 'power3.in', onComplete: () => { if (!open) Sound.doorClose(); } });
+}
+function setDoors(open, instant = false) {
+  if (!instant) emit('doors', { open });
+  state.doors = open;
+  document.getElementById('tDoors').setAttribute('aria-pressed', open);
+  if (!rig) return;
+  if (rig.doorAnim) {
+    const da = rig.doorAnim;
+    if (instant) { da.p = open ? 1 : 0; da.apply(); }
+    else gsap.to(da, { p: open ? 1 : 0, duration: open ? 1.6 : 1.3, ease: 'power2.inOut', onUpdate: () => da.apply() });
+  }
+  if (!instant) open ? Sound.doorOpen() : setTimeout(() => Sound.doorClose(), 700);
+  rig.doors.forEach((d, i) => {
+    const ax = d.userData.axis || 'y', base = d.userData.base || 0;
+    const v = open ? base + d.userData.open : base;
+    if (instant) d.rotation[ax] = v;
+    else gsap.to(d.rotation, { [ax]: v, duration: open ? 1.1 : 0.8, delay: (i % 2) * 0.12, ease: open ? 'power2.out' : 'power2.in' });
+  });
+}
+
+/* Cyber X-Ray: кузов → opacity 0.14 + контурные линии, батарея пульсирует бирюзой */
+function setXray(on, instant = false) {
+  state.xray = on;
+  document.body.classList.toggle('xray', on);
+  document.getElementById('tXray').setAttribute('aria-pressed', on);
+  if (!rig) return;
+  const targets = { paint: on ? 0.14 : 1, other: on ? 0.22 : 1 };
+  rig.xrayMats.forEach((m, i) => {
+    if (!m) return;
+    // исходные свойства материала запоминаем один раз — после рентгена возвращаем ровно их
+    const o = m.userData.x0 ||= { transparent: m.transparent, opacity: m.opacity, depthWrite: m.depthWrite };
+    const goal = on ? (i === 0 ? targets.paint : (o.transparent ? Math.min(o.opacity, 0.08) : targets.other)) : o.opacity;
+    m.transparent = true; m.depthWrite = !on && o.depthWrite; m.needsUpdate = true;
+    const done = () => { if (!on) { m.transparent = o.transparent; m.depthWrite = o.depthWrite; m.opacity = o.opacity; m.needsUpdate = true; } };
+    if (instant) { m.opacity = goal; done(); } else gsap.to(m, { opacity: goal, duration: .7, ease: 'power2.inOut', onComplete: done });
+  });
+  if (rig.xrayLines) { rig.xrayLines.visible = true; gsap.to(rig.xrayLines.material, { opacity: on ? 0.42 : 0, duration: instant ? 0 : .7, onComplete: () => { rig.xrayLines.visible = on; } }); }
+  if (rig.kind === 'glb' && rig.glbNodes.battery) rig.glbNodes.battery.traverse(o => { if (o.isMesh) { o.userData.orig ??= o.material; o.material = on ? rig.glowMat : o.userData.orig; } });
+}
+
+/* ==========================================================================
+   10. ЗВУК — синтез Web Audio API, без внешних файлов
+   Двигатель ДВС — AudioWorklet: 4-тактный цикл (2 оборота), цилиндры вспыхивают
+   равномерно по фазе цикла; каждая вспышка — затухающий импульс давления с шумом
+   сгорания. Импульсы проходят через два резонатора (SVF Чемберлена): «труба выпуска»
+   f1 и «впуск/кузов» f2, затем мягкий tanh-перегруз. Частота вспышек = об/мин/60 · цил/2.
+   ========================================================================== */
+const ENGINE_WORKLET = `
+class EngineProc extends AudioWorkletProcessor {
+  static get parameterDescriptors() { return [
+    { name: 'rpm', defaultValue: 850, minValue: 0, maxValue: 9000, automationRate: 'a-rate' },
+    { name: 'load', defaultValue: 0.3, minValue: 0, maxValue: 1, automationRate: 'k-rate' } ]; }
+  constructor(o) {
+    super(); const p = o.processorOptions || {};
+    this.cyl = p.cylinders || 4; this.f1 = p.f1 || 110; this.f2 = p.f2 || 420; this.q1 = p.q1 || 0.18; this.q2 = p.q2 || 0.35;
+    this.ph = 0; this.slot = -1; this.amp = new Float32Array(this.cyl); this.env = new Float32Array(this.cyl);
+    this.l1 = 0; this.b1 = 0; this.l2 = 0; this.b2 = 0; this.dc = 0;
+  }
+  process(_, outputs, prm) {
+    const out = outputs[0][0], rpmA = prm.rpm, load = prm.load[0], sr = sampleRate;
+    const w1 = 2 * Math.sin(Math.PI * this.f1 / sr), w2 = 2 * Math.sin(Math.PI * this.f2 / sr);
+    for (let i = 0; i < out.length; i++) {
+      const rpm = rpmA.length > 1 ? rpmA[i] : rpmA[0];
+      this.ph += rpm / 120 / sr; if (this.ph >= 1) this.ph -= 1;            // цикл = 2 оборота
+      const s = Math.floor(this.ph * this.cyl);
+      if (s !== this.slot) { this.slot = s; this.env[s] = 0.55 + 0.45 * load + (Math.random() - 0.5) * 0.18; }
+      const fire = rpm / 120 * this.cyl, dec = Math.exp(-fire * 5.5 / sr);  // импульс гаснет за ~1/5 интервала
+      let x = 0;
+      for (let c = 0; c < this.cyl; c++) { x += this.env[c]; this.env[c] *= dec; }
+      x *= 0.65 + 0.35 * (Math.random() * 2 - 1) * (0.3 + 0.7 * load);   // шум сгорания
+      let h = x - this.l1 - this.q1 * this.b1; this.b1 += w1 * h; this.l1 += w1 * this.b1;
+      h = x - this.l2 - this.q2 * this.b2; this.b2 += w2 * h; this.l2 += w2 * this.b2;
+      let y = 0.55 * this.b1 + 0.28 * this.b2 + 0.12 * x;
+      this.dc += (y - this.dc) * 0.001; y -= this.dc;
+      out[i] = Math.tanh(y * (1.2 + load * 1.6)) * 0.5;
+    }
+    return true;
+  }
+}
+registerProcessor('engine-proc', EngineProc);`;
+
+const Sound = {
+  ctx: null, master: null, wet: null, muted: false, nb: null, ready: null, lastHover: 0,
+  ensure() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+      const c = this.ctx = new AC();
+      const comp = c.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = 0.004;
+      this.master = c.createGain(); this.master.gain.value = this.muted ? 0 : 0.8;
+      this.master.connect(comp); comp.connect(c.destination);
+      // акустика шоурума: свёртка с синтетическим импульсом (затухающий стерео-шум ~1.4 с)
+      const len = c.sampleRate * 1.4, ir = c.createBuffer(2, len, c.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+      const conv = c.createConvolver(); conv.buffer = ir;
+      this.wet = c.createGain(); this.wet.gain.value = 0.22; this.wet.connect(conv); conv.connect(this.master);
+      const nl = c.sampleRate * 2; this.nb = c.createBuffer(1, nl, c.sampleRate);
+      const nd = this.nb.getChannelData(0); for (let i = 0; i < nl; i++) nd[i] = Math.random() * 2 - 1;
+      this.loadSamples();
+      this.ready = c.audioWorklet ? c.audioWorklet.addModule(URL.createObjectURL(new Blob([ENGINE_WORKLET], { type: 'application/javascript' }))).then(() => true).catch(() => false) : Promise.resolve(false);
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  },
+  setMuted(m) { this.muted = m; if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.05); },
+  /* Настоящие записи (assets/sounds): мотор Nissan Juke 1.6T (Wikimedia Commons, CC BY 3.0),
+     двери/багажник/капот/замок/паркинг/салон — BigSoundBank (CC0). */
+  buf: {},
+  loadSamples() {
+    const names = ['engine_start', 'engine_idle', 'engine_rev', 'engine_accel', 'door_open', 'door_close', 'trunk_open', 'trunk_close', 'hood_close', 'lock', 'amb_parking', 'road_noise',
+      'ui_click', 'ui_hover', 'ui_toggle_on', 'ui_toggle_off', 'ui_stalk', 'ui_swish', 'ui_whoosh'];
+    this.samplesReady = Promise.all(names.map(n => fetch(`assets/sounds/${n}.mp3`).then(r => r.ok ? r.arrayBuffer() : Promise.reject(n))
+      .then(a => this.ctx.decodeAudioData(a)).then(b => { this.buf[n] = b; }).catch(() => {})))
+      .then(() => this.ambience(ENVS[state.envIdx].id));
+  },
+  play(name, { gain = 1, when = 0, rate = 1, loop = false, wet = 0.25, offset = 0 } = {}) {
+    if (!this.ok() || !this.buf[name]) return null;
+    const c = this.ctx, src = c.createBufferSource(), g = c.createGain();
+    src.buffer = this.buf[name]; src.loop = loop; src.playbackRate.value = rate; g.gain.value = gain;
+    src.connect(g); this.out(g, wet); src.start(c.currentTime + when, offset);
+    return { src, g };
+  },
+  // фон помещения: в паркинге — настоящий гул подземного паркинга
+  amb: null,
+  ambience(id) {
+    if (!this.ctx || this.muted) return;
+    const c = this.ctx, t = c.currentTime;
+    if (this.amb) { const a = this.amb; a.g.gain.setTargetAtTime(0, t, .4); setTimeout(() => a.src.stop(), 2000); this.amb = null; }
+    if (id === 'parking' && this.buf.amb_parking) { const a = this.play('amb_parking', { gain: 0, loop: true, wet: 0 }); if (a) { a.g.gain.setTargetAtTime(0.35, t, .8); this.amb = a; } }
+  },
+  out(g, wet = 0.5) { g.connect(this.master); if (wet) { const w = this.ctx.createGain(); w.gain.value = wet; g.connect(w); w.connect(this.wet); } return g; },
+  noise() { const s = this.ctx.createBufferSource(); s.buffer = this.nb; s.loop = true; s.loopStart = Math.random(); return s; },
+  env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); },
+  tone(type, f0, f1, t, a, peak, d, wet = 0.3) {
+    const c = this.ctx, o = c.createOscillator(), g = c.createGain(); o.type = type;
+    o.frequency.setValueAtTime(f0, t); if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + a + d);
+    this.env(g, t, a, peak, d); o.connect(g); this.out(g, wet); o.start(t); o.stop(t + a + d + 0.05);
+  },
+  burst(type, f, q, t, a, peak, d, f1 = f, wet = 0.4) {
+    const c = this.ctx, n = this.noise(), fl = c.createBiquadFilter(), g = c.createGain();
+    fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q; if (f1 !== f) fl.frequency.exponentialRampToValueAtTime(f1, t + a + d);
+    this.env(g, t, a, peak, d); n.connect(fl).connect(g); this.out(g, wet); n.start(t); n.stop(t + a + d + 0.05);
+  },
+  ok() { return !this.muted && this.ensure(); },
+  // --- интерфейс ---
+  click(f = 1500) { if (!this.ok()) return; if (this.buf.ui_click) { this.play('ui_click', { gain: .9, wet: .05, rate: f > 1700 ? 1.08 : f < 1100 ? .92 : 1 }); return; } const t = this.ctx.currentTime; this.burst('highpass', 3500, .7, t, .001, .09, .025, 3500, .1); this.tone('sine', f, f * .6, t, .003, .07, .06, .15); },
+  hover() { const now = performance.now(); if (now - this.lastHover < 70 || !this.ok()) return; this.lastHover = now; if (this.buf.ui_hover) { this.play('ui_hover', { gain: .5, wet: 0 }); return; } const t = this.ctx.currentTime; this.tone('sine', 2600, 2400, t, .002, .018, .03, 0); },
+  toggle(on) { if (!this.ok()) return; if (this.buf.ui_toggle_on) { this.play(on ? 'ui_toggle_on' : 'ui_toggle_off', { gain: .9, wet: .05 }); return; } const t = this.ctx.currentTime, [a, b] = on ? [880, 1320] : [1320, 760]; this.tone('triangle', a, a, t, .003, .06, .06, .2); this.tone('triangle', b, b, t + .07, .003, .06, .09, .25); },
+  slide() { if (!this.ok()) return; if (this.buf.ui_swish) { this.play('ui_swish', { gain: .6, wet: .1 }); return; } const t = this.ctx.currentTime; this.burst('bandpass', 900, 1.2, t, .04, .09, .22, 3200, .3); },
+  whoosh(d = 1.5) { if (!this.ok()) return; if (this.buf.ui_whoosh) { this.play('ui_whoosh', { gain: .55, wet: .2, rate: THREE.MathUtils.clamp(1.1 / d, .7, 1.2) }); return; } const t = this.ctx.currentTime; this.burst('bandpass', 260, .9, t, d * .45, .13, d * .55, 1900, .5); },
+  doorOpen() { if (!this.ok()) return;
+    if (this.buf.door_open) { this.play('door_open', { gain: .9 }); this.play('door_open', { gain: .6, when: .14, rate: .97 }); if (this.buf.trunk_open) this.play('trunk_open', { gain: .7, when: .3 }); return; }
+    const t = this.ctx.currentTime;
+    this.burst('bandpass', 2200, 4, t, .001, .35, .03, 2200, .2); this.tone('square', 180, 120, t, .001, .05, .04, .2);   // замок
+    this.burst('bandpass', 420, 6, t + .06, .25, .05, .7, 260, .5); },                                                   // петли
+  doorClose() { if (!this.ok()) return;
+    if (this.buf.door_close) { this.play('door_close', { gain: 1 }); this.play('door_close', { gain: .7, when: .16, rate: .96 }); if (this.buf.trunk_close) this.play('trunk_close', { gain: .8, when: .05 }); return; }
+    const t = this.ctx.currentTime;
+    this.tone('sine', 95, 48, t, .004, .7, .26, .6); this.burst('lowpass', 380, .8, t, .002, .5, .18, 120, .6);           // хлопок
+    this.burst('bandpass', 2600, 5, t + .02, .001, .25, .03, 2600, .2); },                                              // защёлка
+  hood() { if (!this.ok()) return;
+    if (this.buf.trunk_open) { this.play('trunk_open', { gain: .8 }); return; }
+    const t = this.ctx.currentTime; this.burst('bandpass', 2800, 1.4, t, .08, .12, 1.0, 1200, .3); this.burst('bandpass', 1900, 5, t, .001, .25, .03, 1900, .1); },
+  // --- двигатели ---
+  async engineNode(spec) {
+    if (!(await this.ready)) return null;
+    const deep = spec.id === 'tank';
+    return new AudioWorkletNode(this.ctx, 'engine-proc', { processorOptions: { cylinders: 4, f1: deep ? 78 : 112, f2: deep ? 310 : 460, q1: deep ? .14 : .18, q2: .32 } });
+  },
+  // Подъезд машины к подиуму: ДВС — короткая перегазовка на холостых, EV — затухающий вой
+  async arrive(spec) {
+    if (!this.ok()) return; const c = this.ctx, t = c.currentTime + .05;
+    if (spec.power !== 'ev' && this.buf.engine_idle) {            // подъезжает на холостых, глушится, щёлкает замок
+      const a = this.play('engine_idle', { gain: 0, wet: .3 });
+      if (a) { a.g.gain.setValueAtTime(0, t); a.g.gain.linearRampToValueAtTime(.7, t + .4); a.g.gain.setValueAtTime(.7, t + 1.3); a.g.gain.linearRampToValueAtTime(0, t + 2.0); }
+      this.play('lock', { gain: .8, when: 2.1 });
+      return;
+    }
+    if (spec.power === 'ev' || spec.power === 'erev') {
+      this.tone('sine', 1500, 420, t, .15, .07, 1.1, .4); this.tone('sine', 3100, 900, t, .15, .025, 1.0, .3);
+      this.burst('bandpass', 700, .7, t, .2, .08, 1.0, 300, .4);
+      return;
+    }
+    const e = await this.engineNode(spec); if (!e) return;
+    const g = c.createGain(), lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
+    const rpm = e.parameters.get('rpm'), load = e.parameters.get('load');
+    rpm.setValueAtTime(1600, t); rpm.linearRampToValueAtTime(900, t + .7); rpm.linearRampToValueAtTime(2900, t + 1.0); rpm.linearRampToValueAtTime(820, t + 1.7);
+    load.setValueAtTime(.25, t); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.55, t + .1); g.gain.setValueAtTime(.55, t + 1.8); g.gain.linearRampToValueAtTime(0, t + 2.4);
+    e.connect(lp).connect(g); this.out(g, .35); setTimeout(() => e.disconnect(), 2800);
+  },
+  /* Разгон.
+     EV: вой инвертора f(t) = f0·(f1/f0)^(t/T) + гармоники ×2 и ×3.02 + шум ветра/шин.
+     EREV (Li): то же + генератор 1.5T на ровных ~2200 об/мин.
+     ДВС: AudioWorklet по расписанию оборотов с переключениями передач (провал + блоу-офф). */
+  launch(spec, onTick, onEnd) {
+    const c = this.ensure(), T = spec.launch, tail = 1.8, kind = spec.power;
+    let rpmAt = el => Math.min(1, el / T);
+    const real = kind === 'rev' ? 'engine_rev' : (kind !== 'ev' ? 'engine_accel' : null);
+    if (c && !this.muted && real && this.buf[real]) {
+      // настоящая запись: пуск → разгон (или перегазовка), затухание в конце
+      const t0 = c.currentTime + .05, dur = T + tail;
+      const a = this.play(real, { gain: 0, wet: .3 });
+      if (a) { a.g.gain.setValueAtTime(0, t0); a.g.gain.linearRampToValueAtTime(1, t0 + .15); a.g.gain.setValueAtTime(1, t0 + dur - .8); a.g.gain.linearRampToValueAtTime(0, t0 + dur + .3); a.src.stop(t0 + dur + .4); }
+    } else if (c && !this.muted) (async () => {
+      const t0 = c.currentTime + 0.06, out = c.createGain(), nodes = [];
+      out.gain.setValueAtTime(0, t0); out.gain.linearRampToValueAtTime(.9, t0 + .12); out.gain.setValueAtTime(.9, t0 + T); out.gain.linearRampToValueAtTime(0, t0 + T + tail);
+      this.out(out, .3);
+      if (kind === 'ev' || kind === 'erev') {
+        const base = kind === 'ev' ? 1 : .85, f0 = 95 * base, f1 = 1350 * base;
+        const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 6;
+        [['sine', 1, .42, null], ['sawtooth', 2, .08, bp], ['triangle', 3.02, .12, null], ['sine', 7.1, .025, null]].forEach(([type, mul, gain, filt]) => {
+          const o = c.createOscillator(), g = c.createGain(); o.type = type; g.gain.value = gain;
+          o.frequency.setValueAtTime(f0 * mul, t0); o.frequency.exponentialRampToValueAtTime(f1 * mul, t0 + T); o.frequency.exponentialRampToValueAtTime(f0 * mul * 1.6, t0 + T + tail);
+          (filt ? o.connect(filt).connect(g) : o.connect(g)); g.connect(out); nodes.push(o);
+        });
+        bp.frequency.setValueAtTime(f0 * 2, t0); bp.frequency.exponentialRampToValueAtTime(f1 * 2, t0 + T);
+        if (kind === 'erev') {
+          const e = await this.engineNode(spec);
+          if (e) { const g = c.createGain(); g.gain.value = .32; e.parameters.get('rpm').setValueAtTime(1500, t0); e.parameters.get('rpm').linearRampToValueAtTime(2300, t0 + T * .5); e.parameters.get('load').value = .5; e.connect(g).connect(out); setTimeout(() => e.disconnect(), (T + tail + .3) * 1000); }
+        }
+      } else {
+        const ev = [];
+        if (kind === 'ice') { const sh = [.24, .33, .43]; let t = 0; ev.push([0, 1500]); sh.forEach((x, k) => { t += T * x; ev.push([t, 6300]); if (k < sh.length - 1) ev.push([t + .12, 4100]); }); ev.push([T + .5, 3600], [T + tail, 900]); }
+        else ev.push([0, 850], [.35, 850], [.75, 4300], [1.25, 1100], [1.6, 1000], [2.0, 5200], [2.6, 1200], [3.0, 950], [3.5, 6100], [T, 1000], [T + tail, 820]);
+        const e = await this.engineNode(spec);
+        if (e) {
+          const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = .8;
+          const rpm = e.parameters.get('rpm'), load = e.parameters.get('load');
+          ev.forEach(([t, r], k) => {
+            const at = t0 + t, up = k > 0 && r > ev[k - 1][1];
+            k === 0 ? rpm.setValueAtTime(r, at) : rpm.linearRampToValueAtTime(r, at);
+            k === 0 ? lp.frequency.setValueAtTime(500 + r * .5, at) : lp.frequency.linearRampToValueAtTime(500 + r * .5, at);
+            load.setValueAtTime(up ? .95 : .2, at);
+            if (k > 0 && r < ev[k - 1][1] - 1500) this.burst('highpass', 2600, .7, at - .05, .02, .16, .22, 4200, .3);   // блоу-офф
+          });
+          e.connect(lp).connect(out); setTimeout(() => e.disconnect(), (T + tail + .3) * 1000);
+          // свист турбины
+          const tw = c.createOscillator(), tg = c.createGain(); tw.type = 'sine'; tg.gain.value = kind === 'ice' ? .012 : .007;
+          ev.forEach(([t, r], k) => k === 0 ? tw.frequency.setValueAtTime(r * 1.1, t0 + t) : tw.frequency.linearRampToValueAtTime(r * 1.1, t0 + t));
+          tw.connect(tg).connect(out); nodes.push(tw);
+        }
+        rpmAt = el => { let r = ev[0][1]; for (let k = 1; k < ev.length; k++) { if (el <= ev[k][0]) { const [ta, ra] = ev[k - 1], [tb, rb] = ev[k]; r = ra + (rb - ra) * (el - ta) / (tb - ta); break; } r = ev[k][1]; } return r / 6500; };
+      }
+      if (kind !== 'rev') {
+        const n = this.noise(), nf = c.createBiquadFilter(), ng = c.createGain(); nf.type = 'bandpass'; nf.Q.value = .7;
+        nf.frequency.setValueAtTime(300, t0); nf.frequency.linearRampToValueAtTime(1600, t0 + T);
+        ng.gain.setValueAtTime(0, t0); ng.gain.linearRampToValueAtTime(.24, t0 + T); ng.gain.linearRampToValueAtTime(0, t0 + T + tail);
+        n.connect(nf).connect(ng).connect(out); nodes.push(n);
+      }
+      nodes.forEach(n => { n.start(t0); n.stop(t0 + T + tail + .1); });
+    })();
+    const start = performance.now();
+    const step = () => {
+      const el = (performance.now() - start) / 1000;
+      const speed = kind === 'rev' ? null : (el < T ? 100 * Math.pow(el / T, .82) : 100 + Math.min(18, (el - T) * 14) * (1 - Math.max(0, el - T - .9)));
+      onTick(speed, el, rpmAt(el));
+      if (el < T + tail) requestAnimationFrame(step); else onEnd();
+    };
+    requestAnimationFrame(step);
+  },
+};
+
+function playLaunch() {
+  if (state.launching || !rig) return;
+  state.launching = true;
+  const spec = CARS[state.idx];
+  const L = document.getElementById('launch'), spd = document.getElementById('lSpd'), tm = document.getElementById('lTm'), rpm = document.getElementById('lRpm'), u = document.getElementById('lU');
+  L.classList.add('on');
+  u.textContent = spec.power === 'rev' ? 'об/мин' : 'км/ч';
+  document.querySelectorAll('[data-launch]').forEach(b => b.disabled = true);
+  // лёгкая «тряска» кузова от тяги
+  const shake = gsap.to(rig.body.rotation, { x: -0.012, duration: .25, yoyo: true, repeat: 1, ease: 'power2.out' });
+  Sound.launch(spec, (speed, el, r) => {
+    if (speed === null) { spd.textContent = Math.round(r * 6500 / 50) * 50; tm.textContent = 'Перегазовка на месте'; state.wheelSpin = 0; }
+    else {
+      spd.textContent = Math.round(speed);
+      if (el <= spec.launch) tm.textContent = `${el.toFixed(2).replace('.', ',')} с`;
+      else tm.textContent = `До сотни за ${String(spec.launch).replace('.', ',')} с`;
+      state.wheelSpin = speed / 3.6 / rig.dims.R * 0.35;        // ω = v / R (замедлено для читаемости)
+    }
+    rpm.style.width = `${clamp(r, 0, 1) * 100}%`;
+  }, () => {
+    L.classList.remove('on'); state.launching = false; state.wheelSpin = 0; shake.kill(); rig.body.rotation.x = 0;
+    document.querySelectorAll('[data-launch]').forEach(b => b.disabled = false);
+  });
+}
+
+/* ==========================================================================
+   11. ХОТСПОТЫ: проекция 3D → 2D + честное скрытие
+   ========================================================================== */
+const HS_ORDER = ['engine', 'battery', 'cabin', 'brakes'];
+const hsLayer = document.getElementById('hotspots');
+const hsEls = {};
+HS_ORDER.forEach((id, i) => {
+  const el = document.createElement('button');
+  el.className = 'hs hidden';
+  el.innerHTML = `<span class="dot" aria-hidden="true"></span><span class="tag lbl"></span>`;
+  el.addEventListener('click', e => { e.stopPropagation(); inspect(id); });
+  el.addEventListener('pointerenter', () => Sound.hover());
+  hsLayer.appendChild(el); hsEls[id] = el;
+});
+const _v = new THREE.Vector3(), _n = new THREE.Vector3(), _c = new THREE.Vector3();
+function updateHotspots() {
+  const show = state.mode === 'orbit' && !state.busy && rig;
+  const s = rig ? sideOfCamera() : 1;
+  for (const id of HS_ORDER) {
+    const el = hsEls[id];
+    if (!show) { el.classList.add('hidden'); continue; }
+    const a = rig.anchors[id];
+    _v.copy(a.p(s));
+    _n.copy(typeof a.n === 'function' ? a.n(s) : a.n).normalize();
+    if (a.body) _v.y += rig.body.position.y;
+    rig.group.localToWorld(_v);
+    _n.transformDirection(rig.group.matrixWorld);
+    // 1) «смотрит» ли точка на камеру: n · (cam − p) > 0, иначе она на обратной стороне кузова
+    const facing = _n.dot(_c.copy(camera.position).sub(_v).normalize());
+    // 2) проекция: NDC ∈ [-1,1]; z > 1 — точка за камерой / за дальней плоскостью
+    _v.project(camera);
+    const onScreen = _v.z < 1 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05;
+    const x = (_v.x * 0.5 + 0.5) * innerWidth, y = (-_v.y * 0.5 + 0.5) * innerHeight;
+    el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
+    el.classList.toggle('hidden', !(onScreen && facing > 0.08));
+  }
+}
+
+/* ==========================================================================
+   12. HUD
+   ========================================================================== */
+const $ = id => document.getElementById(id);
+const fmt = n => new Intl.NumberFormat('ru-RU').format(Math.round(n));
+
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const launchLabel = spec => spec.power === 'rev' ? 'Послушать перегазовку' : 'Послушать разгон';
+const PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14l12-7z"/></svg>';
+const swatchBg = p => p.irid ? 'conic-gradient(#3cf,#4c8dff,#2ec4a6,#fc3,#3cf)' : `radial-gradient(circle at 35% 30%, #fff8 0, ${p.color} 45%, #000 120%)`;
+
+function buildTabs() {
+  $('tabs').innerHTML = CARS.map((c, i) => `<button class="tab" role="tab" aria-selected="false" data-i="${i}">${c.tab}</button>`).join('');
+  $('tabs').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { const i = +b.dataset.i; if (i !== state.idx) { Sound.click(); showCar(i, i > state.idx ? 1 : -1); } }));
+  $('models').style.display = CARS.length > 1 ? '' : 'none';          // одна машина — вкладки не нужны
+}
+
+// Акцент модели: CSS-токен + цвет кольца подиума
+function setAccent(spec) {
+  const root = document.documentElement.style;
+  root.setProperty('--accent', spec.accent); root.setProperty('--accent-ink', spec.accentInk);
+  const c = new THREE.Color(spec.accent);
+  gsap.to(ACCENT, { r: c.r, g: c.g, b: c.b, duration: reduceMotion ? 0 : .8 });
+}
+
+function updateUI() {
+  const spec = CARS[state.idx];
+  setAccent(spec);
+  $('mKind').textContent = spec.kind;
+  $('mName').textContent = spec.name;
+  $('mTrim').textContent = spec.trim;
+  document.title = `${spec.tab} — AutoShowroom 3D`;
+  $('tabs').querySelectorAll('.tab').forEach((b, i) => b.setAttribute('aria-selected', i === state.idx));
+  HS_ORDER.forEach(id => hsEls[id].querySelector('.lbl').textContent = spec.hs[id]);
+  renderCard();
+  // одна оркестрованная смена: имя → цифры, только в ответ на действие
+  if (!reduceMotion) gsap.fromTo(['#mKind', '#mName', '#mTrim', '.spec', '.info-row'], { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .55, stagger: .05, ease: 'power3.out' });
+}
+
+
+function currentRig() { return glbOverrides.get(state.idx) || rigs.get(state.idx); }
+
+function renderInfo() {
+  const spec = CARS[state.idx];
+  $('flipBtn').hidden = !(spec.geo && spec.geo.auto);
+  const cur = currentRig();
+  const rk = (cur && cur.paintKey) || spec.paint;
+  $('specs').innerHTML = spec.stats.map(([k, v, u]) => `<div class="spec"><dd>${v}<small>${u}</small></dd><dt>${k}</dt></div>`).join('');
+  const canPaint = !(cur && cur.paintable === false);
+  $('swatches').hidden = !canPaint;
+  if (!canPaint) { $('swatches').innerHTML = ''; $('paintName').textContent = 'Цвет как на фото модели'; $('launchBtn').innerHTML = `${PLAY}${launchLabel(spec)}`; return; }
+  $('swatches').innerHTML = spec.paints.map(k => `<button aria-pressed="${k === rk}" data-paint="${k}" aria-label="${PAINTS[k].name}" title="${PAINTS[k].name}" style="background:${swatchBg(PAINTS[k])}"></button>`).join('');
+  $('paintName').textContent = PAINTS[rk].name;
+  $('launchBtn').innerHTML = `${PLAY}${launchLabel(spec)}`;
+  $('swatches').querySelectorAll('[data-paint]').forEach(b => b.addEventListener('click', () => {
+    Sound.click(2000);
+    const target = currentRig(); if (!target) return;
+    const p = PAINTS[b.dataset.paint], c = new THREE.Color(p.color);
+    gsap.to(target.paint.color, { r: c.r, g: c.g, b: c.b, duration: .6, ease: 'power2.out', onComplete: () => applyPaint(target, b.dataset.paint) });
+    target.paint.metalness = p.metalness; target.paint.roughness = p.roughness; target.paint.iridescence = p.irid || 0; target.paintKey = b.dataset.paint;
+    $('swatches').querySelectorAll('[data-paint]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    $('paintName').textContent = p.name;
+  }));
+}
+
+// Фото для презентаций: assets/photos/credits.json (Wikimedia Commons, авторы и лицензии внутри)
+let PHOTOS = {};
+fetch('assets/photos/credits.json').then(r => r.ok ? r.json() : {}).then(j => { PHOTOS = j || {}; if (state.mode === 'inspect') renderPanel(); }).catch(() => {});
+// Сценарий презентации: какие фото и какую инфографику показывать для каждой точки осмотра
+const STORY = { engine: ['front', '@kpi'], battery: ['@battery', 'offroad', 'side', 'rear'], cabin: ['cabin'], brakes: ['side', 'rear', 'offroad', '@kpi'] };
+function storySlides(spec, part) {
+  const p = spec.parts[part], pics = PHOTOS[spec.id] || [], out = [];
+  for (const k of STORY[part]) {
+    if (k === '@kpi') out.push({ type: 'kpi', p });
+    else if (k === '@battery') out.push(spec.power === 'ev' || spec.power === 'erev' ? { type: 'battery', p } : { type: 'kpi', p });
+    else pics.filter(x => x.kind === k).forEach(x => out.push({ type: 'photo', x }));
+    if (out.length >= 3) break;
+  }
+  if (!out.length) out.push({ type: 'kpi', p });
+  return out;
+}
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function slideHTML(sl, spec) {
+  if (sl.type === 'photo') return `<img src="${sl.x.file}" alt="${esc(spec.tab)}: ${sl.x.kind === 'cabin' ? 'салон' : 'экстерьер'}" loading="lazy" decoding="async">`;
+  const [main, ...rest] = sl.p.kpi;
+  const cells = sl.type === 'battery' ? `<div class="cells" aria-hidden="true">${Array.from({ length: 24 }, (_, i) => `<i style="--d:${i}"></i>`).join('')}</div>` : '';
+  return `<div class="infog">${cells}<div class="big">${main[0]}<small>${main[1]}</small></div>
+    <div class="row">${rest.map(([v, u]) => `<div><b>${v}</b><span>${u}</span></div>`).join('')}</div></div>`;
+}
+const story = { i: 0, n: 0 };
+function goSlide(i) {
+  const el = document.querySelector('.story'); if (!el) return;
+  story.i = (i + story.n) % story.n;
+  el.querySelector('.track').style.transform = `translateX(${-story.i * 100}%)`;
+  el.querySelectorAll('.slide').forEach((s, k) => s.classList.toggle('on', k === story.i));
+  el.querySelectorAll('.dots button').forEach((d, k) => d.setAttribute('aria-current', k === story.i));
+  const sl = story.slides[story.i], c = $('photoCredit');
+  c.innerHTML = sl.type === 'photo' ? `Фото: ${esc(sl.x.author || 'автор не указан')}, <a href="${sl.x.source}" target="_blank" rel="noopener">${esc(sl.x.license)}</a>` : '';
+}
+
+function renderPanel() {
+  const spec = CARS[state.idx];
+  if (!(state.mode === 'inspect' && state.part)) return;
+  const p = spec.parts[state.part];
+  const cur = currentRig();
+  $('cHeadT').textContent = spec.hs[state.part]; $('cHeadI').textContent = spec.name;
+  const credit = cur && cur.credit ? `<p class="credit">3D-модель: «${cur.credit.title}», автор ${cur.credit.author}, <a href="${cur.credit.url}" target="_blank" rel="noopener">${cur.credit.license}</a></p>` : '';
+  story.slides = storySlides(spec, state.part); story.n = story.slides.length; story.i = 0;
+  const arrow = d => `<svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;
+  $('cardBody').innerHTML = `
+    <div class="story" data-n="${story.n}" role="region" aria-roledescription="карусель" aria-label="Презентация: ${esc(spec.hs[state.part])}">
+      <div class="track">${story.slides.map((sl, k) => `<div class="slide" role="group" aria-label="${k + 1} из ${story.n}">${slideHTML(sl, spec)}</div>`).join('')}</div>
+      <button class="nav prev" aria-label="Предыдущий слайд">${arrow('M15 6l-6 6 6 6')}</button>
+      <button class="nav next" aria-label="Следующий слайд">${arrow('M9 6l6 6-6 6')}</button>
+      <div class="dots">${story.slides.map((_, k) => `<button aria-label="Слайд ${k + 1}"></button>`).join('')}</div>
+    </div>
+    <p class="photo-credit" id="photoCredit"></p>
+    <h2 class="card-title">${p.title}</h2>
+    <div class="kpis">${p.kpi.map(([v, u]) => `<div class="kpi"><b>${v}</b><span>${u}</span></div>`).join('')}</div>
+    <ul class="lines">${p.lines.map(l => `<li>${l}</li>`).join('')}</ul>
+    <div class="actions">
+      <button class="btn primary" data-launch>${PLAY}${launchLabel(spec)}</button>
+      <button class="btn quiet" id="backBtn">Назад к машине</button>
+    </div>${credit}`;
+  $('backBtn').addEventListener('click', () => { Sound.click(900); backToOrbit(); });
+  const st = $('cardBody').querySelector('.story');
+  st.querySelector('.prev').addEventListener('click', () => { Sound.slide(); goSlide(story.i - 1); });
+  st.querySelector('.next').addEventListener('click', () => { Sound.slide(); goSlide(story.i + 1); });
+  st.querySelectorAll('.dots button').forEach((d, k) => d.addEventListener('click', () => goSlide(k)));
+  let sx = null;
+  st.addEventListener('pointerdown', e => { sx = e.clientX; });
+  st.addEventListener('pointerup', e => { if (sx !== null && Math.abs(e.clientX - sx) > 40) goSlide(story.i + (e.clientX < sx ? 1 : -1)); sx = null; });
+  requestAnimationFrame(() => goSlide(0));
+  $('cardBody').querySelectorAll('[data-launch]').forEach(b => b.addEventListener('click', () => playLaunch()));
+}
+
+function renderCard() {
+  renderInfo(); renderPanel();
+  document.querySelectorAll('[data-launch]').forEach(b => b.disabled = state.launching);
+}
+function setCardOpen(open) { $('card').classList.toggle('open', open); if (open) setTimeout(() => $('cardClose').focus({ preventScroll: true }), 300); }
+$('cardClose').addEventListener('click', () => { Sound.click(900); backToOrbit(); });
+$('launchBtn').addEventListener('click', () => playLaunch());
+$('flipBtn').addEventListener('click', () => { if (rig && rig.flip) { rig.flip(); Sound.click(); } });
+if (reduceMotion) controls.autoRotate = false;
+
+// Кнопки-тумблеры
+$('tXray').addEventListener('click', () => { Sound.toggle(!state.xray); state.xrayAuto = false; setXray(!state.xray); });
+$('tDoors').addEventListener('click', () => { if (state.busy || state.mode !== 'orbit') return; setDoors(!state.doors); });
+$('tLights').addEventListener('click', () => {
+  state.lights = !state.lights; if (Sound.buf.ui_stalk) Sound.play('ui_stalk', { gain: .9, wet: .05 }); else Sound.toggle(state.lights); $('tLights').setAttribute('aria-pressed', state.lights);
+  setLights(state.lights);
+});
+$('tSound').addEventListener('click', () => { Sound.setMuted(!Sound.muted); if (!Sound.muted) { Sound.toggle(true); Sound.ambience(ENVS[state.envIdx].id); } $('tSound').setAttribute('aria-pressed', !Sound.muted); $('snd-w').style.opacity = Sound.muted ? 0 : 1; });
+$('tGlb').addEventListener('click', () => $('glbFile').click());
+$('tMood').addEventListener('click', () => { const n = (state.envIdx + 1) % ENVS.length; Sound.toggle(true); toast(`Место съёмки: ${ENVS[n].name}`, 1600); applyEnv(n); });
+$('glbFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) addCustomCar(f); e.target.value = ''; });
+$('prev').addEventListener('click', () => { Sound.click(); showCar((state.idx + CARS.length - 1) % CARS.length, -1); });
+$('next').addEventListener('click', () => { Sound.click(); showCar((state.idx + 1) % CARS.length, 1); });
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (state.mode === 'inspect' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) goSlide(story.i + (e.key === 'ArrowRight' ? 1 : -1));
+  else if (e.key === 'ArrowRight') $('next').click();
+  else if (e.key === 'ArrowLeft') $('prev').click();
+  else if (e.key === 'Escape') { for (const id of ['admin', 'pitch']) if ($(id).classList.contains('open')) { $(id).classList.remove('open'); return; } if ($('credits').classList.contains('open')) $('credits').classList.remove('open'); else if ($('calc').classList.contains('open')) closeCalc(); else if (state.mode === 'inspect') backToOrbit(); }
+  else if (e.key.toLowerCase() === 'x' || e.key.toLowerCase() === 'ч') $('tXray').click();
+  else if (e.key.toLowerCase() === 'd' || e.key.toLowerCase() === 'в') $('tDoors').click();
+  else if (e.key.toLowerCase() === 'l' || e.key.toLowerCase() === 'д') $('tLights').click();
+  else if (e.key.toLowerCase() === 'm' || e.key.toLowerCase() === 'ь') $('tSound').click();
+  else if (e.key.toLowerCase() === 'n' || e.key.toLowerCase() === 'т') $('tMood').click();
+  else if (e.key === ' ' && e.target.tagName !== 'BUTTON') { e.preventDefault(); playLaunch(); }
+});
+// Свайп по полоске моделей на мобиле листает модели
+{
+  let sx = null;
+  $('models').addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
+  $('models').addEventListener('touchend', e => { if (sx === null) return; const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 70 && e.target.closest('.mtab') === null) (dx < 0 ? $('next') : $('prev')).click(); sx = null; });
+}
+
+// Авто-вращение: пауза при взаимодействии, возобновление через 5 с
+controls.addEventListener('start', () => { state.lastInteract = performance.now(); controls.autoRotate = false; });
+controls.addEventListener('end', () => { state.lastInteract = performance.now(); });
+
+/* ==========================================================================
+   13. КАЛЬКУЛЯТОР ПОД КЛЮЧ
+   ========================================================================== */
+/* Настройки дилера: значения из config.js → settings.json на хостинге → локальные правки в этом браузере.
+   Покупатель видит только расчёт; менять цифры можно в «Панели дилера» (адрес с ?admin). */
+/* Растаможка для физлица, личное пользование (ЕАЭС, решение Совета ЕЭК № 107):
+   до 3 лет — % от таможенной стоимости, но не меньше €/см³; 3–5 и старше 5 лет — €/см³.
+   Гибрид с ДВС считается как ДВС (по объёму), мощность для утильсбора — суммарная.
+   Утильсбор: льготный 3 400 ₽ (до 3 лет) / 5 200 ₽ — только при ≤160 л.с. и ≤3 л; иначе сумму вводит дилер.
+   Таможенный сбор — шкала от стоимости в рублях (таблица ниже; при изменении ставок — поправить). */
+const ETT_NEW = [[8500, .54, 2.5], [16700, .48, 3.5], [42300, .48, 5.5], [84500, .48, 7.5], [169000, .48, 15], [Infinity, .48, 20]];
+const ETT_CC = { mid: [[1000, 1.5], [1500, 1.7], [1800, 2.5], [2300, 2.7], [3000, 3.0], [Infinity, 3.6]], old: [[1000, 3.0], [1500, 3.2], [1800, 3.5], [2300, 4.8], [3000, 5.0], [Infinity, 5.7]] };
+const CLEARANCE_FEE = [[200000, 775], [450000, 1550], [1200000, 3100], [2700000, 8530], [4200000, 12000], [5500000, 15500], [7000000, 20000], [8000000, 23000], [9000000, 25000], [10000000, 27000], [Infinity, 30000]];
+const CALC_FIELDS = [
+  ['cny', 'Цена в Китае, ¥', 100], ['rateCny', 'Курс ₽ за ¥', 0.01], ['rateEur', 'Курс ₽ за €', 0.01],
+  ['age', 'Возраст машины', 0, [['new', 'до 3 лет'], ['mid', '3–5 лет'], ['old', 'старше 5 лет']]],
+  ['cc', 'Объём ДВС, см³', 1], ['hp', 'Мощность суммарная, л.с.', 1],
+  ['util', 'Утильсбор, ₽ (пусто — льготный, если ≤160 л.с.)', 1000],
+  ['delivery', 'Доставка автовозом до Владивостока, ₽', 1000], ['docs', 'СБКТС / ЭПТС / брокер, ₽', 1000], ['fee', 'Комиссия салона, ₽', 1000],
+];
+const LS_KEY = 'autoshowroom-dealer-settings';
+const defaults = () => ({ contacts: { ...CONTACTS }, updated: null, cars: Object.fromEntries(CARS.map(c => [c.id, { ...c.calc }])) });
+let SETTINGS = defaults();
+const mergeSettings = src => {
+  if (!src) return;
+  if (src.contacts) Object.assign(SETTINGS.contacts, src.contacts);
+  if (src.updated) SETTINGS.updated = src.updated;
+  if (src.cars) for (const [id, v] of Object.entries(src.cars)) SETTINGS.cars[id] = { ...(SETTINGS.cars[id] || {}), ...v };
+};
+const settingsReady = (canFetch ? fetch('settings.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null))
+  .then(j => { mergeSettings(j); try { mergeSettings(JSON.parse(localStorage.getItem(LS_KEY) || 'null')); } catch (e) {} });
+const calcOf = spec => SETTINGS.cars[spec.id] || spec.calc || SETTINGS.cars[CARS[0].id];
+function calcCompute(v) {
+  v = { rateCny: v.rate ?? 11.5, rateEur: 95, age: 'new', cc: 1500, hp: 150, ...v };
+  const invoice = v.cny * v.rateCny, valueEur = invoice / v.rateEur;
+  let dutyEur, dutyNote;
+  if (v.age === 'new') { const [, pct, min] = ETT_NEW.find(([lim]) => valueEur <= lim); const a = valueEur * pct, b = v.cc * min; dutyEur = Math.max(a, b); dutyNote = a >= b ? `${Math.round(pct * 100)}% стоимости` : `${min} €/см³`; }
+  else { const [, rate] = ETT_CC[v.age].find(([lim]) => v.cc <= lim); dutyEur = v.cc * rate; dutyNote = `${rate} €/см³`; }
+  const duty = dutyEur * v.rateEur;
+  const clearance = CLEARANCE_FEE.find(([lim]) => invoice <= lim)[1];
+  const preferential = v.hp <= 160 && v.cc <= 3000;
+  const util = (v.util !== null && v.util !== '' && v.util !== undefined && !isNaN(v.util)) ? +v.util : (preferential ? (v.age === 'new' ? 3400 : 5200) : null);
+  const total = invoice + duty + clearance + (util || 0) + v.delivery + v.docs + v.fee;
+  return { invoice, duty, dutyNote, clearance, util, utilUnknown: util === null, total };
+}
+const breakdownHTML = v => { const r = calcCompute(v); return [
+  ['Цена в Китае', `¥ ${fmt(v.cny)} → ${fmt(r.invoice)} ₽`], [`Пошлина (ЕТС, ${r.dutyNote})`, `${fmt(r.duty)} ₽`], ['Таможенный сбор', `${fmt(r.clearance)} ₽`],
+  ['Утильсбор', r.utilUnknown ? 'рассчитаем индивидуально' : `${fmt(r.util)} ₽`],
+  ['Доставка автовозом', `${fmt(v.delivery)} ₽`], ['Документы / брокер', `${fmt(v.docs)} ₽`], ['Комиссия салона', `${fmt(v.fee)} ₽`],
+].map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join(''); };
+let shownTotal = 0;
+const countTo = (el, n, reset, prefix = '') => { const o = { n: reset ? 0 : shownTotal }; gsap.to(o, { n, duration: reset ? 1 : .35, ease: 'power2.out', onUpdate: () => { shownTotal = o.n; el.textContent = `${prefix}${fmt(o.n)} ₽`; } }); };
+async function openCalc() {
+  await settingsReady;
+  const spec = CARS[state.idx], v = calcOf(spec);
+  $('calcTitle').textContent = `${spec.tab} под ключ во Владивостоке`;
+  $('calcSub').textContent = `Цена в Китае, таможня, утильсбор и доставка автовозом до Владивостока${SETTINGS.updated ? ` — данные салона на ${SETTINGS.updated}` : ''}.`;
+  $('calcBreak').innerHTML = breakdownHTML(v);
+  { const r = calcCompute(v); countTo($('calcTotal'), r.total, true, r.utilUnknown ? 'от ' : ''); }
+  $('calc').classList.add('open'); Sound.click(1400); setTimeout(() => $('sendTg').focus(), 50);
+}
+const closeCalc = () => { $('calc').classList.remove('open'); $('ctaBtn').focus(); };
+function requestText() {
+  const spec = CARS[state.idx], v = calcOf(spec), r = calcCompute(v), rk = rig && rig.paintKey ? PAINTS[rig.paintKey].name : '';
+  return `Здравствуйте! Хочу расчёт под ключ во Владивосток: ${spec.tab}, ${spec.trim}${rk ? `, цвет «${rk}»` : ''}. Ориентир с сайта — ${r.utilUnknown ? 'от ' : ''}${fmt(r.total)} ₽.`;
+}
+$('ctaBtn').addEventListener('click', openCalc);
+
+// ---------- Панель дилера (?admin) ----------
+let draft = null;
+function adminRender() {
+  const fld = (id, k, label, step, val, type = 'number', opts = null) => opts
+    ? `<div class="field"><label for="a_${id}_${k}">${label}</label><select id="a_${id}_${k}" data-car="${id}" data-k="${k}">${opts.map(([v, t]) => `<option value="${v}" ${v === val ? 'selected' : ''}>${t}</option>`).join('')}</select></div>`
+    : `<div class="field"><label for="a_${id}_${k}">${label}</label><input id="a_${id}_${k}" data-car="${id}" data-k="${k}" type="${type}" ${type === 'number' ? `inputmode="decimal" step="${step}"` : ''} value="${esc(val ?? '')}"></div>`;
+  $('adminBody').innerHTML = `
+    <div class="admin-group"><h3>Контакты для заявок</h3><div class="fields">
+      ${fld('c', 'telegram', 'Telegram (username без @)', 0, draft.contacts.telegram, 'text')}
+      ${fld('c', 'whatsapp', 'WhatsApp (7XXXXXXXXXX)', 0, draft.contacts.whatsapp, 'text')}
+      ${fld('c', 'updated', 'Данные актуальны на', 0, draft.updated || new Date().toLocaleDateString('ru-RU'), 'text')}
+    </div></div>
+    ${CARS.map(c => `<div class="admin-group"><h3>${esc(c.tab)}</h3><div class="fields">${CALC_FIELDS.map(([k, l, st, opts]) => fld(c.id, k, l, st, (draft.cars[c.id] || {})[k], 'number', opts)).join('')}</div></div>`).join('')}`;
+  $('adminBody').querySelectorAll('input,select').forEach(inp => inp.addEventListener('input', () => {
+    const { car, k } = inp.dataset;
+    if (car === 'c') { if (k === 'updated') draft.updated = inp.value; else draft.contacts[k] = inp.value.trim().replace(/^@/, ''); }
+    else if (inp.tagName === 'SELECT') (draft.cars[car] ||= {})[k] = inp.value;
+    else if (k === 'util' && String(inp.value).trim() === '') (draft.cars[car] ||= {})[k] = null;
+    else (draft.cars[car] ||= {})[k] = parseFloat(String(inp.value).replace(',', '.')) || 0;
+    adminPreview();
+  }));
+  adminPreview(true);
+}
+function adminPreview(reset) {
+  const spec = CARS[state.idx], v = draft.cars[spec.id] || calcOf(spec);
+  $('adminPreview').innerHTML = breakdownHTML(v);
+  { const r = calcCompute(v); countTo($('adminTotal'), r.total, reset, r.utilUnknown ? 'от ' : ''); }
+}
+async function openAdmin() {
+  await settingsReady;
+  draft = JSON.parse(JSON.stringify(SETTINGS));
+  if (!draft.updated) draft.updated = new Date().toLocaleDateString('ru-RU');
+  adminRender(); $('admin').classList.add('open'); Sound.click(1400);
+}
+$('adminApply').addEventListener('click', () => {
+  SETTINGS = JSON.parse(JSON.stringify(draft));
+  try { localStorage.setItem(LS_KEY, JSON.stringify(SETTINGS)); toast('Применено в этом браузере. Для сайта — скачайте settings.json'); }
+  catch (e) { toast('Браузер не дал сохранить — скачайте settings.json'); }
+  Sound.toggle(true);
+});
+$('adminSave').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(draft, null, 2)], { type: 'application/json' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'settings.json' });
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('settings.json скачан — положите его рядом с index.html на хостинге');
+});
+$('adminReset').addEventListener('click', () => { try { localStorage.removeItem(LS_KEY); } catch (e) {} draft = defaults(); adminRender(); toast('Сброшено к config.js (в этом браузере)'); });
+$('adminClose').addEventListener('click', () => $('admin').classList.remove('open'));
+$('admin').addEventListener('click', e => { if (e.target === $('admin')) $('admin').classList.remove('open'); });
+if (new URLSearchParams(location.search).has('admin')) { $('tAdmin').hidden = false; $('tAdmin').addEventListener('click', openAdmin); }
+
+// ---------- Питч: «Ваша машина в 3D» + загрузка своей модели ----------
+$('pitchBtn').addEventListener('click', () => { $('pitch').classList.add('open'); Sound.click(1400); });
+$('pitchClose').addEventListener('click', () => $('pitch').classList.remove('open'));
+$('pitch').addEventListener('click', e => { if (e.target === $('pitch')) $('pitch').classList.remove('open'); });
+$('pitchUpload').addEventListener('click', () => { $('pitch').classList.remove('open'); $('glbFile').click(); });
+$('pitchContact').addEventListener('click', () => {
+  const t = 'Здравствуйте! Хочу 3D-витрину для своих машин, как на вашем сайте.';
+  window.open(SETTINGS.contacts.telegram && !/your_/.test(SETTINGS.contacts.telegram) ? `https://t.me/${SETTINGS.contacts.telegram}` : `https://wa.me/${SETTINGS.contacts.whatsapp}?text=${encodeURIComponent(t)}`, '_blank', 'noopener');
+});
+// Авторы и лицензии: 3D-модели (MODEL_CREDITS), фото (credits.json), HDRI
+function openCredits() {
+  const rows = [];
+  CARS.forEach(c => { const m = MODEL_CREDITS[c.id]; if (m) rows.push(`<div><b>${c.tab}: 3D-модель</b><br>«${m.title}», автор ${m.author} — <a href="${m.url}" target="_blank" rel="noopener">${m.license}</a></div>`); });
+  Object.entries(PHOTOS).forEach(([id, list]) => { const c = CARS.find(x => x.id === id); list.forEach(x => rows.push(`<div><b>${c ? c.tab : id}: фото</b><br>${esc(x.author)} — <a href="${x.source}" target="_blank" rel="noopener">${esc(x.license)}</a></div>`)); });
+  rows.push('<div><b>Звук мотора</b><br>«Nissan Juke — engine and exhaust sound», AndCars (YouTube) — <a href="https://commons.wikimedia.org/wiki/File:Nissan_Juke_-_engine_and_exhaust_sound_(YouTube_m9Am72CCFuc).opus" target="_blank" rel="noopener">CC BY 3.0</a></div>');
+  rows.push('<div><b>Двери, багажник, капот, замок, паркинг, салон</b><br>Joseph Sardin, BigSoundBank — <a href="https://bigsoundbank.com" target="_blank" rel="noopener">CC0</a></div>');
+  ENVS.forEach(e => rows.push(`<div><b>Помещение «${e.name}»</b><br>3D: «${e.credit.title}», автор ${e.credit.author} — <a href="${e.credit.url}" target="_blank" rel="noopener">CC BY 4.0</a>; освещение: HDRI «${e.hdr}», Poly Haven — <a href="https://polyhaven.com/a/${e.hdr}" target="_blank" rel="noopener">CC0</a></div>`));
+  $('creditsList').innerHTML = rows.join('');
+  $('credits').classList.add('open'); Sound.click(1400);
+}
+$('creditsBtn').addEventListener('click', openCredits);
+$('creditsClose').addEventListener('click', () => $('credits').classList.remove('open'));
+$('credits').addEventListener('click', e => { if (e.target === $('credits')) $('credits').classList.remove('open'); });
+$('calcClose').addEventListener('click', closeCalc);
+$('calc').addEventListener('click', e => { if (e.target === $('calc')) closeCalc(); });
+$('sendWa').addEventListener('click', () => window.open(`https://wa.me/${SETTINGS.contacts.whatsapp}?text=${encodeURIComponent(requestText())}`, '_blank', 'noopener'));
+$('sendTg').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(requestText()); toast('Текст заявки скопирован — вставь его в чат'); } catch (e) { /* без буфера — просто откроем чат */ }
+  window.open(`https://t.me/${SETTINGS.contacts.telegram}`, '_blank', 'noopener');
+});
+
+function toast(msg, ms = 2800) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), ms); }
+toast.hide = () => { clearTimeout(toast.h); $('toast').classList.remove('on'); };
+
+/* ==========================================================================
+   14. СВОЯ .GLB: кнопка, drag&drop, ?glb=путь
+   ========================================================================== */
+/* Своя модель дилера: отдельная вкладка «Ваша модель». Файл открывается локально, никуда не уходит.
+   Размер: если модель уже в метрах (длина 2,5–7 м) — оставляем, иначе приводим к 4,7 м. */
+async function addCustomCar(file) {
+  const base = CARS[0];
+  let i = CARS.findIndex(c => c.id === 'custom');
+  const name = file.name.replace(/\.(glb|gltf)$/i, '').replace(/[_-]+/g, ' ').trim().slice(0, 28) || 'Ваша модель';
+  const spec = {
+    ...base, id: 'custom', name: name.toUpperCase(), tab: 'Ваша модель', kind: 'Ваша 3D-модель', trim: 'Открыта с вашего устройства — на сервер не отправляется',
+    accent: '#4c8dff', accentInk: '#071224', power: 'ice', launch: 6,
+    stats: [['Описание', '—', 'добавится из ваших данных', .5]], sub: '',
+    hs: { engine: 'Подкапотное пространство', battery: 'Днище и привод', cabin: 'Салон', brakes: 'Колёса' },
+    parts: Object.fromEntries(['engine', 'battery', 'cabin', 'brakes'].map(k => [k, { title: 'Здесь будет ваша презентация', lines: ['Ваши фото салона, мотора и деталей', 'Ваши ТТХ и комплектации', 'Расчёт цены по вашим ставкам'], kpi: [['—', 'ваши цифры']] }])),
+    calc: { ...base.calc }, geo: { ...base.geo, L: null, auto: true },
+  };
+  if (i < 0) { CARS.push(spec); i = CARS.length - 1; } else CARS[i] = spec;
+  SETTINGS.cars.custom ||= { ...base.calc };
+  glbOverrides.delete(i);
+  buildTabs();
+  await useGLB(file, i);
+  if (state.idx !== i) showCar(i, 1);
+}
+
+async function useGLB(src, idx = state.idx, silent = false) {
+  try {
+    if (!silent) toast('Загружаю модель…');
+    const r = await buildGLBCar(CARS[idx], src);
+    applyPaint(r, CARS[idx].paint);
+    if (typeof src === 'string' && MODEL_CREDITS[CARS[idx].id]) r.credit = MODEL_CREDITS[CARS[idx].id];
+    glbOverrides.set(idx, r);
+    if (idx === state.idx) { if (state.mode === 'inspect') await backToOrbit(true); const old = rig; if (old) stage.remove(old.group); rig = null; state.busy = false; await showCar(idx, 1, true); }
+    const nodesFound = Object.entries(r.glbNodes).filter(([k, v]) => Array.isArray(v) ? v.length : v).map(([k]) => k);
+    if (!silent) toast(`Модель загружена. Найдены ноды: ${nodesFound.join(', ') || 'нет (капот/двери не анимируются)'}`);
+  } catch (e) {
+    console.warn('GLB не загрузился, остаётся процедурная машина:', e);
+    if (!silent) toast('Не удалось загрузить .glb — оставил процедурную модель');
+  }
+}
+addEventListener('dragover', e => { e.preventDefault(); $('drop').classList.add('on'); });
+addEventListener('dragleave', e => { if (e.relatedTarget === null) $('drop').classList.remove('on'); });
+addEventListener('drop', e => { e.preventDefault(); $('drop').classList.remove('on'); const f = e.dataTransfer.files[0]; if (f && /\.(glb|gltf)$/i.test(f.name)) addCustomCar(f); });
+
+/* ==========================================================================
+   15. ЦИКЛ И РЕСАЙЗ
+   ========================================================================== */
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; frameCamera(); camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); bloom.resolution.set(innerWidth, innerHeight);
+  if (rig && state.mode === 'orbit') applyOrbitLimits(overviewPose());
+});
+
+/* ---------- жесты на телефоне ---------- */
+const touchUI = matchMedia('(pointer: coarse)').matches || isMobile;
+if (touchUI) {
+  const info = $('info'), grip = $('grip');
+  const setSheet = open => { info.classList.toggle('collapsed', !open); grip.setAttribute('aria-expanded', open); grip.setAttribute('aria-label', open ? 'Скрыть характеристики' : 'Показать характеристики'); };
+  if (innerWidth <= 860) setSheet(false);
+  grip.addEventListener('click', () => { Sound.slide(); setSheet(info.classList.contains('collapsed')); });
+  const nextPaint = step => {
+    const b = [...$('swatches').querySelectorAll('[data-paint]')]; if (!b.length) return;
+    const i = b.findIndex(x => x.getAttribute('aria-pressed') === 'true');
+    b.at((i + step + b.length) % b.length).click();
+  };
+  // свайпы по нижней панели: вверх/вниз — характеристики, влево/вправо — цвет
+  let sx = 0, sy = 0, st = 0;
+  info.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; st = performance.now(); });
+  info.addEventListener('pointerup', e => {
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (performance.now() - st > 700) return;
+    if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx)) { Sound.slide(); setSheet(dy < 0); }
+    else if (Math.abs(dx) > 50) nextPaint(dx < 0 ? 1 : -1);
+  });
+  // карточка детали: свайп вниз — закрыть
+  let cy = 0;
+  $('card').addEventListener('pointerdown', e => { cy = e.clientY; });
+  $('card').addEventListener('pointerup', e => { if (e.clientY - cy > 80 && $('cardBody').scrollTop <= 0) $('cardClose').click(); });
+  // двойной тап по машине: ближе ↔ обратно
+  let lastTap = 0, tx = 0, ty = 0;
+  canvas.addEventListener('pointerdown', e => { tx = e.clientX; ty = e.clientY; });
+  canvas.addEventListener('pointerup', e => {
+    if (Math.hypot(e.clientX - tx, e.clientY - ty) > 12 || state.mode !== 'orbit' || !rig) return;
+    const now = performance.now();
+    if (now - lastTap < 320) {
+      lastTap = 0;
+      const o = overviewPose(), dir = camera.position.clone().sub(controls.target).normalize();
+      const cur = camera.position.distanceTo(controls.target);
+      const want = cur > o.dist * 0.8 ? Math.max(controls.minDistance, o.dist * 0.6) : Math.min(controls.maxDistance, o.dist);
+      const p = controls.target.clone().addScaledVector(dir, want);
+      Sound.whoosh(.6); state.lastInteract = performance.now();
+      gsap.to(camera.position, { x: p.x, y: p.y, z: p.z, duration: .6, ease: 'power2.out' });
+    } else lastTap = now;
+  });
+  // подсказка один раз
+  let seen = false; try { seen = localStorage.getItem('showroom-gesture-hint') === '1'; } catch (e) {}
+  if (!seen) {
+    const h = $('gHint');
+    const hide = () => { if (h.hidden) return; h.classList.add('out'); setTimeout(() => { h.hidden = true; }, 400); try { localStorage.setItem('showroom-gesture-hint', '1'); } catch (e) {} };
+    setTimeout(() => { h.hidden = false; setTimeout(hide, 6000); }, 2500);
+    canvas.addEventListener('pointerdown', hide, { once: true });
+  }
+}
+
+const clock = new THREE.Clock();
+/* Автоподстройка качества: если кадров меньше 35/с (слабый телефон, ноутбук без видеокарты) —
+   ступенчато упрощаем: 1) выключаем GTAO и снижаем разрешение, 2) контактная тень реже, свечение меньше. */
+const perf = { frames: 0, t: 0, level: 0, ready: false, csEvery: 1, f: 0 };
+function adaptQuality(dt) {
+  if (!perf.ready) { perf.t += dt; if (perf.t > 4) { perf.ready = true; perf.t = 0; } return; }   // первые секунды — загрузка
+  perf.frames++; perf.t += dt;
+  if (perf.t < 2.5) return;
+  const fps = perf.frames / perf.t; perf.frames = 0; perf.t = 0;
+  if (fps >= 35 || perf.level >= 2) return;
+  perf.level++;
+  if (perf.level === 1) { if (gtao) gtao.enabled = false; renderer.setPixelRatio(1); composer.setPixelRatio(1); composer.setSize(innerWidth, innerHeight); }
+  if (perf.level === 2) { perf.csEvery = 3; bloom.enabled = false; sun.castShadow = false; }
+  console.info(`[качество] ${fps.toFixed(0)} к/с → упрощение, уровень ${perf.level}`);
+}
+const ACCENT = new THREE.Color('#4c8dff');
+let lastZ = 0;
+function tick() {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  if (state.mode === 'orbit' && !controls.autoRotate && !reduceMotion && !state.busy && performance.now() - state.lastInteract > 5000) controls.autoRotate = true;
+  if (controls.enabled) controls.update(dt);
+  clampCameraToRoom();
+  if (rig) {
+    // вращение колёс: от разгона или от перемещения машины при смене модели (ω = Δz / R)
+    const dz = rig.group.position.z - lastZ; lastZ = rig.group.position.z;
+    const w = state.wheelSpin * dt + dz / rig.dims.R;
+    rig.wheels.forEach(wh => wh.spin.rotation.x += w * wh.sign);
+    // пульс батареи в рентгене
+    if (rig.cellMat) rig.cellMat.emissiveIntensity = state.xray ? 1.6 + Math.sin(t * 4) * 0.9 : 0;
+    if (rig.caseMat) rig.caseMat.opacity = state.xray ? 0.35 : 1;
+    rig.bayGlow.forEach(m => m.material.emissiveIntensity = 1.2 + Math.sin(t * 3) * 0.6);
+  }
+  podRing.material.color.copy(ACCENT).multiplyScalar((state.ringK ?? 1.5) * (1 + Math.sin(t * 1.4) * 0.25));
+  adaptQuality(dt);
+  if ((perf.f++ % perf.csEvery) === 0) CS.update(stage);
+  composer.render();
+  updateHotspots();
+  requestAnimationFrame(tick);
+}
+
+/* ==========================================================================
+   16. СТАРТ
+   ========================================================================== */
+applyEnv(0);
+buildTabs();
+/* ---------- режим продукта: бренд / дилер, встраивание ---------- */
+const QS = new URLSearchParams(location.search);
+const BRAND_MODE = (QS.get('mode') || APP.mode) === 'brand';
+// события для сайта-хозяина (аналитика): window.addEventListener('message', e => e.data.type === 'showroom' && …)
+function emit(event, data = {}) { try { if (window.parent !== window) window.parent.postMessage({ type: 'showroom', event, model: CARS[state.idx].id, ...data }, '*'); } catch (e) {} }
+if (QS.has('embed')) document.body.classList.add('embed');
+if (BRAND_MODE) {
+  $('pitchBtn').hidden = true; $('tAdmin').hidden = true;
+  $('ctaBtn').textContent = APP.cta.text;
+  $('mPrice').textContent = APP.price; $('mPrice').hidden = !APP.price;
+  document.querySelector('.mark').lastChild.textContent = '';
+  $('ctaBtn').replaceWith($('ctaBtn').cloneNode(true));          // снимаем обработчик калькулятора
+  $('ctaBtn').addEventListener('click', () => { Sound.click(1400); emit('cta', { url: APP.cta.url }); window.open(APP.cta.url, '_blank', 'noopener'); });
+}
+if (new URLSearchParams(location.search).has('debug')) window.__showroom = { camera, controls, state, showCar, inspect, backToOrbit, setXray, setDoors, useGLB: (...a) => useGLB(...a), addCustomCar: (...a) => addCustomCar(...a), applyEnv: i => applyEnv(i), Sound, GLB_CFG, floor: { mirror, asphalt, floorFade, shadowCatcher, cs: CS.plane, softL, softR, sun }, get rig() { return rig; } }; // для отладки в консоли
+await showCar(0, 1, true);
+tick();
+setTimeout(() => $('loader').classList.add('done'), 350);
+if (isMobile) setCardOpen(false);
+
+// внешние .glb: ?glb=models/x.glb для текущей модели; на http(s) — авто-поиск models/<id>.glb
+const qs = new URLSearchParams(location.search);
+if (qs.get('glb')) useGLB(qs.get('glb'));
+else if (location.protocol.startsWith('http')) {
+  (async () => { await loadCarGLB(state.idx); for (let i = 0; i < CARS.length; i++) await loadCarGLB(i); })();
+}
+</script>
+</body>
+</html>
